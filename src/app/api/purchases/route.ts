@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import * as db from "@/lib/db";
-import { handleRefund, expirePendingOrders } from "@/lib/paypal/orders";
+import { handleRefund } from "@/lib/paypal/orders";
 
 const DEMO_USER = "demo-user-1";
 
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     const purchases = db.getPurchaseRequestsByUser(DEMO_USER, limit);
 
     // Expire old pending orders
-    expirePendingOrders(DEMO_USER);
+    db.expirePendingOrders(DEMO_USER);
 
     return NextResponse.json({ purchases });
   } catch (err: any) {

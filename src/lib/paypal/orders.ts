@@ -65,7 +65,7 @@ export async function requestPurchase(params: {
     return {
       decision: existing.policy_decision as any,
       purchaseRequestId: existing.id,
-      approvalUrl: null,
+      approvalUrl: undefined,
       reasons: ["Duplicate request — returning existing order"],
       trace: JSON.parse(existing.policy_trace_json || "[]"),
       riskScore: existing.risk_score,

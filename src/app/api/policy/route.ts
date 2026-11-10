@@ -90,9 +90,10 @@ export async function POST(req: NextRequest) {
 
     // Detect changes
     const changes: Array<{ field: string; from: any; to: any; isLoosening: boolean }> = [];
-    for (const key of Object.keys(proposed) as Array<keyof typeof proposed>) {
-      const old = currentPolicy[key];
-      const newVal = proposed[key];
+    const propKeys = Object.keys(proposed);
+    for (const key of propKeys) {
+      const old = (currentPolicy as any)[key];
+      const newVal = (proposed as any)[key];
       if (JSON.stringify(old) !== JSON.stringify(newVal)) {
         const isLoosening = detectLoosening(key, old, newVal);
         changes.push({ field: key, from: old, to: newVal, isLoosening });

@@ -87,11 +87,17 @@ export async function POST(req: NextRequest) {
         summary: `Guardian approved: ${pr.title} — redirecting to PayPal`,
       });
 
-      // Build PayPal approval URL
-      const appBase = process.env.APP_BASE_URL || "http://localhost:3000";
-      const approvalUrl = pr.paypal_order_id
-        ? `${appBase}/api/paypal/return?token=${pr.paypal_order_id}&source=guardian`
-        : null;
+      // Get the PayPal approval URL from the order
+      const { getOrder } = await import("@/lib/paypal/client");
+      const order = await getOrder(pr.paypal_order_id!);
+      
+      // Find the approve link from PayPal
+      const approveLink = order.links.find((l: any) => l.rel === "approve" || l.rel === "payer-action");
+      const approvalUrl = approveLink?.href || order.approvalUrl;
+
+      if (!approvalUrl) {
+        return NextResponse.json({ error: "PayPal approval URL not found" }, { status: 500 });
+      }
 
       return NextResponse.json({ success: true, action: "approved", approvalUrl });
     }

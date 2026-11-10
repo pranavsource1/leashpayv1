@@ -1,20 +1,31 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useParams } from "next/navigation";
+import QRCode from "qrcode";
 
-export default function GuardianApprovePage() {
+function GuardianApproveContent() {
   const params = useParams();
   const token = params.token as string;
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [qrCode, setQrCode] = useState<string>("");
 
   useEffect(() => {
     if (token) {
+      const approvalUrl = `${window.location.origin}/approve/${token}`;
       fetch(`/api/approve?token=${token}`)
         .then(r => r.json())
-        .then(d => { if (d.error) setError(d.error); else setData(d); })
+        .then(d => {
+          if (d.error) {
+            setError(d.error);
+          } else {
+            setData(d);
+            // Generate QR code
+            QRCode.toDataURL(approvalUrl, { width: 200 }).then(setQrCode);
+          }
+        })
         .catch(e => setError(e.message));
     }
   }, [token]);
@@ -56,12 +67,21 @@ export default function GuardianApprovePage() {
   if (!data) return <p style={{ textAlign: "center", marginTop: "60px" }}>Loading...</p>;
 
   const trace = data.policy_trace || [];
+  const approvalUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/approve/${token}`;
 
   return (
     <div style={{ maxWidth: "500px", margin: "40px auto" }}>
       <div style={{ textAlign: "center", marginBottom: "24px" }}>
         <h1 style={{ fontSize: "24px" }}>🔒 Approval Required</h1>
         <p style={{ color: "#666" }}>An AI agent is requesting to make this purchase</p>
+        
+        {/* QR Code for mobile scanning */}
+        {qrCode && (
+          <div style={{ marginTop: "16px", padding: "16px", background: "white", borderRadius: "8px", border: "1px solid #ddd" }}>
+            <p style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>Scan to approve on your phone:</p>
+            <img src={qrCode} alt="QR Code" style={{ width: "150px", height: "150px" }} />
+          </div>
+        )}
       </div>
 
       <div style={{ background: "white", padding: "24px", borderRadius: "12px", border: "1px solid #ddd", marginBottom: "20px" }}>
@@ -120,5 +140,14 @@ export default function GuardianApprovePage() {
         </button>
       </div>
     </div>
+  );
+}
+
+
+export default function GuardianApprovePage() {
+  return (
+    <Suspense fallback={<p style={{ textAlign: "center", marginTop: "60px" }}>Loading approval page...</p>}>
+      <GuardianApproveContent />
+    </Suspense>
   );
 }

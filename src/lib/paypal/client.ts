@@ -61,7 +61,7 @@ export interface CreateOrderParams {
 export interface PayPalOrder {
   id: string;
   status: string;
-  approvalUrl: string | null;
+  approvalUrl: string | undefined;
   links: Array<{ href: string; rel: string; method?: string }>;
 }
 
@@ -154,7 +154,7 @@ export async function createOrder(params: CreateOrderParams): Promise<PayPalOrde
   return {
     id: data.id,
     status: data.status,
-    approvalUrl: approvalLink?.href || null,
+    approvalUrl: approvalLink?.href || undefined,
     links: data.links || [],
   };
 }
@@ -165,7 +165,7 @@ export async function getOrder(orderId: string): Promise<PayPalOrder> {
     return {
       id: orderId,
       status: "APPROVED",
-      approvalUrl: null,
+      approvalUrl: undefined,
       links: [],
     };
   }
@@ -183,7 +183,7 @@ export async function getOrder(orderId: string): Promise<PayPalOrder> {
   return {
     id: data.id,
     status: data.status,
-    approvalUrl: null,
+    approvalUrl: undefined,
     links: data.links || [],
   };
 }

@@ -70,3 +70,17 @@ export interface PolicyDecision {
   remainingBudgetAfter: number; // cents
   riskScore: number;            // 0-100
 }
+
+// ---------------------------------------------------------------------------
+// Ledger state for policy evaluation
+// ---------------------------------------------------------------------------
+
+export interface LedgerState {
+  capturedCents: number;
+  reservedCents: number;
+  recentPurchases: Array<{
+    amountCents: number;
+    createdAt: Date;
+    autoApproved: boolean;
+  }>;
+}

@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useParams } from "next/navigation";
 
-export default function ReceiptPage() {
+function ReceiptContent() {
   const params = useParams();
   const id = params.id as string;
   const [data, setData] = useState<any>(null);
@@ -90,5 +90,14 @@ export default function ReceiptPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+
+export default function ReceiptPage() {
+  return (
+    <Suspense fallback={<p style={{ textAlign: "center", marginTop: "60px" }}>Loading receipt...</p>}>
+      <ReceiptContent />
+    </Suspense>
   );
 }
