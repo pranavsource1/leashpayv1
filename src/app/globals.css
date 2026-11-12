@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 @import "ag-grid-community/styles/ag-grid.css";
 @import "ag-grid-community/styles/ag-theme-alpine.css";
@@ -45,9 +46,6 @@
   --radius-pills: 160px;
   --radius-images: 16px;
 }
-
-/* ── Google Fonts ── */
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap");
 
 html {
   scroll-behavior: smooth;
