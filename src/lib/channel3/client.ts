@@ -89,12 +89,11 @@ export async function searchProducts(
   // Fixture fallback
   const products = loadFixtures();
   const q = query.toLowerCase();
-  let filtered = products.filter(p =>
-    p.title.toLowerCase().includes(q) ||
-    p.description.toLowerCase().includes(q) ||
-    p.category.toLowerCase().includes(q) ||
-    p.brand.toLowerCase().includes(q)
-  );
+  const queryTerms = q.split(/\s+/).filter(Boolean);
+  let filtered = products.filter(p => {
+    const searchable = `${p.title} ${p.description} ${p.category} ${p.brand}`.toLowerCase();
+    return queryTerms.every(term => searchable.includes(term));
+  });
 
   if (maxPrice) {
     filtered = filtered.filter(p =>

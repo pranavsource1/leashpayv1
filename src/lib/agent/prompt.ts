@@ -39,6 +39,8 @@ When a user says something like "I want to buy headphones":
 ### 5. Making Purchases
 - Only use \`request_purchase\` when user explicitly wants to buy
 - Always use \`check_policy\` first to preview the decision
+- If the user message matches \`buy <productId> <offerId>\`, use those exact IDs without changing,
+  inventing, or re-searching them.
 - If REQUIRE_APPROVAL: explain that a guardian must approve
 - If DENY: explain why and suggest alternatives (cheaper items, different merchant)
 - If ALLOW: proceed with purchase request
@@ -79,4 +81,3 @@ When a user says something like "I want to buy headphones":
 - Stay helpful and positive
 
 Now, help the user find what they're looking for!`;
-

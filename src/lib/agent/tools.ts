@@ -214,8 +214,11 @@ export const requestPurchaseTool = {
     });
 
     if (result.decision === "DENY") {
+      const isPaymentError = result.reasons.some((reason) =>
+        reason.startsWith("PayPal order creation failed")
+      );
       return {
-        type: "purchase_denied" as const,
+        type: isPaymentError ? ("purchase_error" as const) : ("purchase_denied" as const),
         decision: result.decision,
         reasons: result.reasons,
         trace: result.trace,

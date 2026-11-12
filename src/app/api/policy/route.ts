@@ -7,6 +7,7 @@ import { getPolicyConfig, savePolicy, createAuditLog, getPolicyVersion } from "@
 import { PolicySchema, DEFAULT_POLICY } from "@/lib/policy/schema";
 import { signMandate } from "@/lib/mandate/sign";
 import { createMandate } from "@/lib/db";
+import { formatINR, inrToUsd } from "@/lib/money";
 
 const DEMO_USER = "demo-user-1";
 
@@ -121,16 +122,16 @@ function compileNaturalLanguage(sentence: string, current: any): any {
   const s = sentence.toLowerCase();
 
   // Budget patterns
-  const budgetMatch = s.match(/budget.*?\$?(\d+)/);
-  if (budgetMatch) proposed.monthlyBudget = Math.min(parseInt(budgetMatch[1]) * 100, 200000);
+  const budgetMatch = s.match(/budget.*?(?:₹|rs\.?|inr|\$)?\s*(\d[\d,]*)/);
+  if (budgetMatch) proposed.monthlyBudget = Math.min(inrToUsd(parseInt(budgetMatch[1].replace(/,/g, ""))), 200000);
 
   // Per-purchase cap
-  const capMatch = s.match(/(?:cap|limit|max|more than|most).*?\$?(\d+)/);
-  if (capMatch && !s.includes("budget")) proposed.perPurchaseCap = Math.min(parseInt(capMatch[1]) * 100, 100000);
+  const capMatch = s.match(/(?:cap|limit|max|more than|most).*?(?:₹|rs\.?|inr|\$)?\s*(\d[\d,]*)/);
+  if (capMatch && !s.includes("budget")) proposed.perPurchaseCap = Math.min(inrToUsd(parseInt(capMatch[1].replace(/,/g, ""))), 100000);
 
   // Approval threshold
-  const approvalMatch = s.match(/(?:ask|approve|approval|confirm).*?(?:above|over|more than).*?\$?(\d+)/i);
-  if (approvalMatch) proposed.requireApprovalOver = parseInt(approvalMatch[1]) * 100;
+  const approvalMatch = s.match(/(?:ask|approve|approval|confirm).*?(?:above|over|more than).*?(?:₹|rs\.?|inr|\$)?\s*(\d[\d,]*)/i);
+  if (approvalMatch) proposed.requireApprovalOver = inrToUsd(parseInt(approvalMatch[1].replace(/,/g, "")));
 
   // Freeze
   if (s.includes("freeze") || s.includes("pause") || s.includes("stop all") || s.includes("block all")) {
@@ -189,9 +190,9 @@ function detectLoosening(field: string, oldVal: any, newVal: any): boolean {
 
 function generatePolicySummary(policy: any): string {
   const parts: string[] = [];
-  parts.push(`The agent may spend up to $${(policy.monthlyBudget / 100).toFixed(0)} this month`);
-  parts.push(`at most $${(policy.perPurchaseCap / 100).toFixed(0)} per purchase`);
-  parts.push(`and must ask you above $${(policy.requireApprovalOver / 100).toFixed(0)}`);
+  parts.push(`The agent may spend up to ${formatINR(policy.monthlyBudget)} this month`);
+  parts.push(`at most ${formatINR(policy.perPurchaseCap)} per purchase`);
+  parts.push(`and must ask you above ${formatINR(policy.requireApprovalOver)}`);
 
   if (policy.allowedMerchants?.length > 0) {
     parts.push(`only from ${policy.allowedMerchants.join(", ")}`);

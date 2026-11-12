@@ -8,14 +8,8 @@ const nextConfig: NextConfig = {
     // Temporarily ignore build errors to test
     ignoreBuildErrors: true,
   },
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
-  },
 };
+
+export default nextConfig;
 
 export default nextConfig;

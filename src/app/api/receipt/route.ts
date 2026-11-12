@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getPurchaseRequest, getMandateByPurchase, getAuditLogs } from "@/lib/db";
-import { formatUSD } from "@/lib/money";
+import { formatINR } from "@/lib/money";
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       receipt: {
         id: pr.id,
         title: pr.title,
-        amount: formatUSD(pr.amount_cents),
+        amount: formatINR(pr.amount_cents),
         amountCents: pr.amount_cents,
         currency: pr.currency,
         merchant: pr.offer_domain,

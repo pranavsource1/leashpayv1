@@ -1,8 +1,8 @@
 /**
  * icons.tsx — the app's inline icon set.
  *
- * Every glyph is a single-path outline icon so pages stay consistent and
- * emoji never leak into the interface.
+ * Every glyph is a single-path outline icon so pages stay consistent.
+ * Thin strokes in #141414 ink — matches the Flim analog aesthetic.
  */
 
 export type IconName =
@@ -31,7 +31,8 @@ export type IconName =
   | "download"
   | "link"
   | "bug"
-  | "dot";
+  | "dot"
+  | "leashDog";
 
 const PATHS: Record<IconName, string> = {
   search: "M20.5 20.5 16.9 16.9M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z",
@@ -62,6 +63,9 @@ const PATHS: Record<IconName, string> = {
   link: "M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1",
   bug: "M9 6.5a3 3 0 0 1 6 0M8 10h8v5a4 4 0 0 1-8 0v-5ZM8 12H5M16 12h3M8.5 16 6 18M15.5 16 18 18M8.5 8 6.5 6M15.5 8l2-2",
   dot: "M12 12h.01",
+  // Dog on a leash — the LeashPay poster character
+  leashDog:
+    "M7 17.5c0-1.5 1-2.5 2-3l1-3.5c.3-1 1.2-1.5 2-1.5s1.7.5 2 1.5l1 3.5c1 .5 2 1.5 2 3M9.5 10.5c-.8-.3-1.5-1-1.5-2a2 2 0 0 1 4 0M14 8.5a2 2 0 0 1 4 0c0 1-.7 1.7-1.5 2M10 8c-.3-.5-.3-1.2 0-1.8M16 8c.3-.5.3-1.2 0-1.8M9 17.5h8M10.5 17.5v2M15.5 17.5v2M5 7.5V4M5 7.5l2.5 2",
 };
 
 export function Icon({

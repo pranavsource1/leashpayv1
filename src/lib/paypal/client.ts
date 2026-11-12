@@ -12,7 +12,7 @@ function getBaseUrl(): string {
 }
 
 function isMockMode(): boolean {
-  return !process.env.PAYPAL_CLIENT_ID;
+  return process.env.PAYPAL_MOCK_MODE === "true" || !process.env.PAYPAL_CLIENT_ID;
 }
 
 // ── Access Token (cached) ──

@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { getLedger, getSpendSummary, getSavingsSummary, getPolicyConfig } from "@/lib/db";
-import { formatUSD } from "@/lib/money";
+import { formatINR } from "@/lib/money";
 
 const DEMO_USER = "demo-user-1";
 
@@ -20,33 +20,33 @@ export async function GET() {
     return NextResponse.json({
       budget: {
         total: policy.monthlyBudget,
-        totalFormatted: formatUSD(policy.monthlyBudget),
+        totalFormatted: formatINR(policy.monthlyBudget),
         captured: ledger.captured_cents,
-        capturedFormatted: formatUSD(ledger.captured_cents),
+        capturedFormatted: formatINR(ledger.captured_cents),
         reserved: ledger.reserved_cents,
-        reservedFormatted: formatUSD(ledger.reserved_cents),
+        reservedFormatted: formatINR(ledger.reserved_cents),
         remaining,
-        remainingFormatted: formatUSD(remaining),
+        remainingFormatted: formatINR(remaining),
         remainingPct: Math.round((remaining / policy.monthlyBudget) * 100),
         frozen: policy.frozen,
       },
       spend: {
         byMerchant: spend.byMerchant.map(m => ({
           ...m,
-          totalFormatted: formatUSD(m.total),
+          totalFormatted: formatINR(m.total),
         })),
         byCategory: spend.byCategory.map(c => ({
           ...c,
-          totalFormatted: formatUSD(c.total),
+          totalFormatted: formatINR(c.total),
         })),
         byDecision: spend.byDecision,
       },
       savings: {
         blockedTotal: savings.blockedTotal,
-        blockedTotalFormatted: formatUSD(savings.blockedTotal),
+        blockedTotalFormatted: formatINR(savings.blockedTotal),
         blockedCount: savings.blockedCount,
         savingsTotal: savings.savingsTotal,
-        savingsTotalFormatted: formatUSD(savings.savingsTotal),
+        savingsTotalFormatted: formatINR(savings.savingsTotal),
         savingsCount: savings.savingsCount,
       },
     });

@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { AgGridReact } from "ag-grid-react";
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-alpine.css";
 import type { ColDef } from "ag-grid-community";
 import Icon from "@/components/icons";
 
@@ -65,18 +63,9 @@ export default function AuditPage() {
 
   // Custom cell renderers
   const ActorCellRenderer = (props: any) => {
-    const tones: Record<string, string> = {
-      AGENT: "bg-primary-soft text-primary",
-      POLICY: "bg-amber-50 text-amber-700",
-      USER: "bg-cta-soft text-emerald-700",
-      PAYPAL: "bg-blue-50 text-blue-700",
-      SYSTEM: "bg-slate-100 text-muted-600",
-    };
     return (
       <span
-        className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-          tones[props.value] ?? "bg-slate-100 text-muted-600"
-        }`}
+        className="inline-flex items-center border border-hairline rounded-full px-2 py-0.5 text-[11px] font-semibold text-ink/70"
       >
         {props.value}
       </span>
@@ -84,15 +73,15 @@ export default function AuditPage() {
   };
 
   const EventCellRenderer = (props: any) => (
-    <span className="text-[12px] font-medium text-foreground">
+    <span className="text-[12px] font-medium text-ink">
       {(props.value ?? "").replace(/_/g, " ").toLowerCase()}
     </span>
   );
 
   const HashCellRenderer = (props: any) => {
-    if (!props.value) return <span className="text-muted-300">—</span>;
+    if (!props.value) return <span className="text-ink/30">—</span>;
     return (
-      <code className="font-mono text-[11px] text-muted">
+      <code className="font-mono text-[11px] text-ink/40">
         {props.value.substring(0, 16)}…
       </code>
     );
@@ -100,7 +89,7 @@ export default function AuditPage() {
 
   const TimeCellRenderer = (props: any) => {
     const date = new Date(props.value);
-    return <span className="whitespace-nowrap text-[12px] text-muted-600">{date.toLocaleString()}</span>;
+    return <span className="whitespace-nowrap text-[12px] text-ink/60">{date.toLocaleString()}</span>;
   };
 
   // Column definitions
@@ -155,13 +144,10 @@ export default function AuditPage() {
   const getRowStyle = useCallback((params: any) => {
     const evt = params.data.event_type;
     if (evt === "DENIED" || evt === "MANDATE_MISMATCH" || evt === "KILL_SWITCH" || evt === "ERROR") {
-      return { background: "#fef2f2" };
+      return { background: "#f0f0f0" };
     }
     if (evt === "CAPTURED" || evt === "APPROVED") {
-      return { background: "#ecfdf5" };
-    }
-    if (evt === "POLICY_DECISION" || evt === "APPROVAL_REQUESTED") {
-      return { background: "#fffbeb" };
+      return { background: "#ffffff" };
     }
     return undefined;
   }, []);
@@ -180,19 +166,24 @@ export default function AuditPage() {
   );
 
   const selectClass =
-    "h-9 rounded-lg border border-line bg-surface px-2.5 text-xs font-medium text-muted-600 outline-none transition hover:border-line-strong focus:border-primary focus:ring-2 focus:ring-primary/20";
+    "h-9 rounded-lg border border-hairline bg-paper px-2.5 text-xs font-medium text-ink/60 outline-none transition hover:border-ink/30 focus:border-ink";
 
   return (
     <div className="pb-4">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Audit log</h1>
-          <p className="mt-1 text-sm text-muted">
+          <h1
+            className="text-2xl font-bold tracking-tight text-ink"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            Audit log
+          </h1>
+          <p className="mt-1 text-sm text-ink/60">
             Tamper-evident hash chain of every event in the system.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-muted">
-          <Icon name="shieldCheck" className="h-3.5 w-3.5 text-cta" />
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-3 py-1 text-xs font-semibold text-ink/60">
+          <Icon name="shieldCheck" className="h-3.5 w-3.5 text-signal-green" />
           {logs.length} entries
         </span>
       </div>
@@ -200,28 +191,28 @@ export default function AuditPage() {
       <div className="mb-4 flex flex-wrap gap-2">
         <button
           onClick={verifyChain}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-3.5 py-2 text-xs font-semibold text-paper transition-colors hover:bg-ink/90"
         >
           <Icon name="link" className="h-3.5 w-3.5" />
           Verify chain
         </button>
         <button
           onClick={simulateTamper}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-surface px-3.5 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-3.5 py-2 text-xs font-semibold text-ink/60 transition-colors hover:text-ink hover:border-ink/30"
         >
           <Icon name="bug" className="h-3.5 w-3.5" />
           Simulate tamper
         </button>
         <button
           onClick={downloadCSV}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3.5 py-2 text-xs font-semibold text-muted-600 transition-colors hover:border-line-strong hover:text-foreground"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-3.5 py-2 text-xs font-semibold text-ink/60 transition-colors hover:text-ink hover:border-ink/30"
         >
           <Icon name="download" className="h-3.5 w-3.5" />
           Export CSV
         </button>
         <button
           onClick={loadLogs}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3.5 py-2 text-xs font-semibold text-muted-600 transition-colors hover:border-line-strong hover:text-foreground"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-3.5 py-2 text-xs font-semibold text-ink/60 transition-colors hover:text-ink hover:border-ink/30"
         >
           <Icon name="refresh" className="h-3.5 w-3.5" />
           Refresh
@@ -230,16 +221,13 @@ export default function AuditPage() {
 
       {verifyResult && (
         <div
-          className={`mb-4 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm ${
-            verifyResult.valid
-              ? "border-cta-border bg-cta-soft text-emerald-800"
-              : "border-red-200 bg-red-50 text-red-800"
-          }`}
+          className="mb-4 flex items-start gap-2 rounded-2xl border border-hairline p-4 text-sm text-ink"
         >
-          <Icon
-            name={verifyResult.valid ? "shieldCheck" : "alert"}
-            className="mt-0.5 h-4 w-4 shrink-0"
-          />
+          {verifyResult.valid ? (
+            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-signal-green" />
+          ) : (
+            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-ink" />
+          )}
           <span>
             {verifyResult.valid
               ? `Chain verified. ${verifyResult.totalRows} rows checked, no tampering detected.`
@@ -307,7 +295,7 @@ export default function AuditPage() {
         </select>
       </div>
 
-      <div className="ag-theme-alpine overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+      <div className="ag-theme-alpine overflow-hidden rounded-2xl border border-hairline bg-paper">
         <div style={{ height: "520px", width: "100%" }}>
           <AgGridReact
             rowData={logs}
@@ -324,58 +312,88 @@ export default function AuditPage() {
       </div>
 
       {selectedRow && (
-        <div className="mt-4 rounded-2xl border border-line bg-surface p-5 shadow-sm">
+        <div className="mt-4 rounded-2xl border border-hairline bg-paper p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <Icon name="list" className="h-4 w-4 text-muted-400" />
+            <h3 className="flex items-center gap-2 text-base font-semibold text-ink">
+              <Icon name="list" className="h-4 w-4 text-ink/40" />
               Event details
             </h3>
             <button
               onClick={() => setSelectedRow(null)}
               aria-label="Close event details"
-              className="rounded-lg p-1.5 text-muted transition-colors hover:bg-canvas hover:text-foreground"
+              className="rounded-lg p-1.5 text-ink/40 transition-colors hover:bg-canvas hover:text-ink"
             >
               <Icon name="close" className="h-4 w-4" />
             </button>
           </div>
 
           <dl className="grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-[140px_1fr]">
-            <dt className="text-xs font-semibold uppercase tracking-wider text-muted-400">ID</dt>
-            <dd className="break-all font-mono text-xs text-foreground">{selectedRow.id}</dd>
+            <dt
+              className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink/40"
+              style={{ fontFamily: "var(--font-mono-ui)" }}
+            >
+              ID
+            </dt>
+            <dd className="break-all font-mono text-xs text-ink">{selectedRow.id}</dd>
 
-            <dt className="text-xs font-semibold uppercase tracking-wider text-muted-400">
+            <dt
+              className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink/40"
+              style={{ fontFamily: "var(--font-mono-ui)" }}
+            >
               Timestamp
             </dt>
-            <dd className="text-muted-600">{new Date(selectedRow.ts).toLocaleString()}</dd>
+            <dd className="text-ink/60">{new Date(selectedRow.ts).toLocaleString()}</dd>
 
-            <dt className="text-xs font-semibold uppercase tracking-wider text-muted-400">Actor</dt>
-            <dd className="font-medium text-foreground">{selectedRow.actor}</dd>
+            <dt
+              className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink/40"
+              style={{ fontFamily: "var(--font-mono-ui)" }}
+            >
+              Actor
+            </dt>
+            <dd className="font-medium text-ink">{selectedRow.actor}</dd>
 
-            <dt className="text-xs font-semibold uppercase tracking-wider text-muted-400">Event</dt>
-            <dd className="font-medium text-foreground">{selectedRow.event_type}</dd>
+            <dt
+              className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink/40"
+              style={{ fontFamily: "var(--font-mono-ui)" }}
+            >
+              Event
+            </dt>
+            <dd className="font-medium text-ink">{selectedRow.event_type}</dd>
 
-            <dt className="text-xs font-semibold uppercase tracking-wider text-muted-400">
+            <dt
+              className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink/40"
+              style={{ fontFamily: "var(--font-mono-ui)" }}
+            >
               Summary
             </dt>
-            <dd className="text-muted-600">{selectedRow.summary}</dd>
+            <dd className="text-ink/60">{selectedRow.summary}</dd>
 
-            <dt className="text-xs font-semibold uppercase tracking-wider text-muted-400">
+            <dt
+              className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink/40"
+              style={{ fontFamily: "var(--font-mono-ui)" }}
+            >
               Previous hash
             </dt>
-            <dd className="break-all font-mono text-[11px] text-muted">{selectedRow.prev_hash}</dd>
+            <dd className="break-all font-mono text-[11px] text-ink/40">{selectedRow.prev_hash}</dd>
 
-            <dt className="text-xs font-semibold uppercase tracking-wider text-muted-400">
+            <dt
+              className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink/40"
+              style={{ fontFamily: "var(--font-mono-ui)" }}
+            >
               Row hash
             </dt>
-            <dd className="break-all font-mono text-[11px] text-muted">{selectedRow.row_hash}</dd>
+            <dd className="break-all font-mono text-[11px] text-ink/40">{selectedRow.row_hash}</dd>
 
             {selectedRow.detail_json && (
               <>
-                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-400">
+                <dt
+                  className="text-[12px] font-semibold uppercase tracking-[0.06em] text-ink/40"
+                  style={{ fontFamily: "var(--font-mono-ui)" }}
+                >
                   Details
                 </dt>
                 <dd>
-                  <pre className="scroll-thin max-h-[200px] overflow-auto rounded-xl border border-line bg-canvas p-3 font-mono text-[11px] leading-relaxed text-muted-600">
+                  <pre className="scroll-thin max-h-[200px] overflow-auto rounded-2xl border border-hairline bg-canvas p-3 font-mono text-[11px] leading-relaxed text-ink/60">
                     {JSON.stringify(JSON.parse(selectedRow.detail_json), null, 2)}
                   </pre>
                 </dd>
@@ -386,12 +404,12 @@ export default function AuditPage() {
       )}
 
       {logs.length === 0 && !loading && (
-        <div className="mt-4 rounded-2xl border border-line bg-surface px-6 py-16 text-center shadow-sm">
-          <span className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-primary-soft text-primary">
+        <div className="mt-4 rounded-2xl border border-hairline bg-paper px-6 py-16 text-center">
+          <span className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-canvas text-ink">
             <Icon name="receipt" className="h-5 w-5" />
           </span>
-          <p className="mt-4 text-sm font-semibold text-foreground">No audit entries yet</p>
-          <p className="mt-1 text-sm text-muted">Use the chat to generate some activity.</p>
+          <p className="mt-4 text-sm font-semibold text-ink">No audit entries yet</p>
+          <p className="mt-1 text-sm text-ink/60">Use the chat to generate some activity.</p>
         </div>
       )}
     </div>

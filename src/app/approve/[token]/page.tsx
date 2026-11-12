@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useParams } from "next/navigation";
 import QRCode from "qrcode";
 import Icon from "@/components/icons";
+import { formatINR } from "@/lib/money";
 
 function GuardianApproveContent() {
   const params = useParams();
@@ -106,7 +107,7 @@ function GuardianApproveContent() {
         <h2 className="text-base font-semibold text-foreground">{data.title}</h2>
 
         <p className="mt-3 font-display text-4xl font-bold tracking-tight text-foreground">
-          ${(data.amount_cents / 100).toFixed(2)}
+          {formatINR(data.amount_cents)}
         </p>
 
         <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">

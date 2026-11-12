@@ -5,57 +5,61 @@ import { usePathname } from "next/navigation";
 import Icon from "@/components/icons";
 
 const LINKS = [
-  { href: "/", label: "Chat" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/audit", label: "Audit log" },
-  { href: "/settings", label: "Policy" },
+  { href: "/", label: "CHAT" },
+  { href: "/dashboard", label: "DASHBOARD" },
+  { href: "/audit", label: "AUDIT" },
+  { href: "/settings", label: "POLICY" },
+  { href: "/redteam", label: "RED TEAM" },
 ];
 
 export default function Nav() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:gap-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-white shadow-sm ring-1 ring-primary/20">
-            <Icon name="shieldCheck" className="h-5 w-5" strokeWidth={1.9} />
+    <header className="sticky top-0 z-30 border-b border-hairline bg-paper/90 backdrop-blur-sm">
+      <div className="mx-auto flex h-14 w-full items-center gap-4 px-4 sm:gap-6 sm:px-6">
+        {/* Wordmark + poster character */}
+        <Link href="/" className="flex shrink-0 items-center gap-2">
+          <span className="text-ink">
+            <Icon name="leashDog" className="h-7 w-7" strokeWidth={1.5} />
           </span>
-          <span className="font-display text-base font-bold tracking-tight text-foreground sm:text-lg">
+          <span
+            className="text-xl font-medium tracking-[-0.02em] text-ink"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             LeashPay
           </span>
         </Link>
 
-        <nav className="no-scrollbar -mx-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1">
+        {/* Ghost navigation links — mono, tracked-out, uppercase */}
+        <nav className="no-scrollbar -mx-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-1">
           {LINKS.map((link) => {
-            const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+            const active =
+              link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
             return (
               <Link
                 key={link.href}
                 href={link.href}
                 aria-current={active ? "page" : undefined}
-                className={
+                className={`shrink-0 whitespace-nowrap px-2.5 py-1.5 text-[12px] font-normal tracking-[0.06em] transition-colors sm:px-3 ${
                   active
-                    ? "shrink-0 whitespace-nowrap rounded-lg bg-primary-soft px-2.5 py-1.5 text-sm font-semibold text-primary transition-colors sm:px-3.5"
-                    : "shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-slate-100 hover:text-foreground sm:px-3.5"
-                }
+                    ? "text-ink"
+                    : "text-ink/40 hover:text-ink"
+                }`}
+                style={{ fontFamily: "var(--font-mono-ui)" }}
               >
-                {link.href === "/audit" ? (
-                  <>
-                    <span className="sm:hidden">Audit</span>
-                    <span className="hidden sm:inline">Audit log</span>
-                  </>
-                ) : (
-                  link.label
-                )}
+                {link.label}
               </Link>
             );
           })}
         </nav>
 
-        <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-line bg-canvas px-3 py-1 text-xs font-medium text-muted md:flex">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-          Demo wallet
+        {/* Status indicator with signal green dot */}
+        <span className="hidden shrink-0 items-center gap-2 md:flex">
+          <span className="flex items-center gap-1.5 text-[12px] tracking-[0.06em] text-ink/50" style={{ fontFamily: "var(--font-mono-ui)" }}>
+            <span className="h-2 w-2 rounded-full bg-signal-green" />
+            DEMO WALLET
+          </span>
         </span>
       </div>
     </header>

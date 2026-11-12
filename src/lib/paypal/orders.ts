@@ -10,7 +10,7 @@ import * as db from "../db";
 import { getOffer, getProduct } from "../channel3/client";
 import { createOrder, captureOrder, getOrder, refundCapture } from "./client";
 import { signMandate, sha256, canonical } from "../mandate/sign";
-import { formatUSD, currentMonth } from "../money";
+import { formatINR, currentMonth } from "../money";
 import type { Policy } from "../policy/schema";
 
 export interface PurchaseResult {
@@ -123,7 +123,7 @@ export async function requestPurchase(params: {
       actor: "POLICY",
       eventType: "DENIED",
       purchaseRequestId: pr.id,
-      summary: `DENIED: ${product.title} (${formatUSD(offer.priceCents)}) — ${policyResult.reasons.join("; ")}`,
+      summary: `DENIED: ${product.title} (${formatINR(offer.priceCents)}) — ${policyResult.reasons.join("; ")}`,
       detailJson: policyResult,
       agentProfileId: params.agentProfileId,
     });
@@ -231,7 +231,7 @@ export async function requestPurchase(params: {
     actor: "POLICY",
     eventType: "POLICY_DECISION",
     purchaseRequestId: pr.id,
-    summary: `${policyResult.decision}: ${product.title} (${formatUSD(offer.priceCents)}) from ${offer.merchant}`,
+    summary: `${policyResult.decision}: ${product.title} (${formatINR(offer.priceCents)}) from ${offer.merchant}`,
     detailJson: policyResult,
     agentProfileId: params.agentProfileId,
   });
@@ -241,7 +241,7 @@ export async function requestPurchase(params: {
     actor: "SYSTEM",
     eventType: "ORDER_CREATED",
     purchaseRequestId: pr.id,
-    summary: `PayPal order ${paypalOrder.id} created for ${formatUSD(offer.priceCents)}`,
+    summary: `PayPal order ${paypalOrder.id} created for ${formatINR(offer.priceCents)}`,
     detailJson: { paypalOrderId: paypalOrder.id, approvalUrl: paypalOrder.approvalUrl },
     agentProfileId: params.agentProfileId,
   });
@@ -323,7 +323,7 @@ export async function handleReturn(paypalOrderId: string): Promise<CaptureResult
       actor: "PAYPAL",
       eventType: "CAPTURED",
       purchaseRequestId: pr.id,
-      summary: `Payment captured: ${formatUSD(pr.amount_cents)} for ${pr.title}`,
+      summary: `Payment captured: ${formatINR(pr.amount_cents)} for ${pr.title}`,
       detailJson: { captureId: capture.captureId, paypalOrderId },
     });
 
@@ -392,7 +392,7 @@ export async function handleRefund(
       actor: "USER",
       eventType: "REFUNDED",
       purchaseRequestId: pr.id,
-      summary: `Refund processed: ${formatUSD(refundAmount)} for ${pr.title}`,
+      summary: `Refund processed: ${formatINR(refundAmount)} for ${pr.title}`,
       detailJson: { refundId: refund.id, amount: refundAmount },
     });
 

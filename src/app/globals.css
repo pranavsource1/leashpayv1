@@ -1,37 +1,53 @@
 @import "tailwindcss";
+@import "ag-grid-community/styles/ag-grid.css";
+@import "ag-grid-community/styles/ag-theme-alpine.css";
 
 @theme {
-  /* Surfaces */
-  --color-canvas: #f8fafc;
+  /* ── Flim Colors ── */
+  --color-ink: #141414;
+  --color-paper: #ffffff;
+  --color-canvas: #f5f5f5;
+  --color-mist: #e9e9e9;
+  --color-hairline: #d9d9d9;
+  --color-signal-green: #30a81d;
+  --color-forest: #21935b;
+  --color-highlight-yellow: #fecc33;
+  --color-ember: #ff8400;
+
+  /* ── Semantic aliases (old token names → Flim values) ── */
+  --color-foreground: #141414;
   --color-surface: #ffffff;
-  --color-line: #e2e8f0;
-  --color-line-strong: #cbd5e1;
+  --color-line: #d9d9d9;
+  --color-line-strong: #c0c0c0;
+  --color-muted-300: #b0b0b0;
+  --color-muted-400: #8a8a8a;
+  --color-muted-500: #6e6e6e;
+  --color-muted-600: #4a4a4a;
+  --color-primary: #141414;
+  --color-primary-soft: #f5f5f5;
+  --color-cta: #30a81d;
+  --color-cta-soft: #f0faf0;
+  --color-cta-border: rgba(48, 168, 29, 0.25);
+  --color-border-card: #d9d9d9;
 
-  /* Type */
-  --color-foreground: #0f172a;
-  --color-muted: #64748b;
-  --color-muted-300: #cbd5e1;
-  --color-muted-400: #94a3b8;
-  --color-muted-500: #64748b;
-  --color-muted-600: #475569;
+  /* ── Shadows (deliberately flat — no elevation) ── */
+  --shadow-card: none;
+  --shadow-lift: none;
 
-  /* Accents */
-  --color-primary: #4f46e5;
-  --color-primary-soft: #eef2ff;
-  --color-cta: #10b981;
-  --color-cta-soft: #ecfdf5;
-  --color-cta-border: #a7f3d0;
+  /* ── Typography ── */
+  --font-sans: "Arial", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Schibsted Grotesk", var(--font-sans);
+  --font-mono-ui: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* Legacy aliases used across pages */
-  --color-border-card: #e2e8f0;
-
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04);
-  --shadow-lift: 0 1px 2px rgb(15 23 42 / 0.04), 0 12px 24px -16px rgb(15 23 42 / 0.18);
-
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    sans-serif;
-  --font-display: var(--font-display), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* ── Radii (Flim 3-tier system) ── */
+  --radius-buttons: 8px;
+  --radius-cards: 16px;
+  --radius-pills: 160px;
+  --radius-images: 16px;
 }
+
+/* ── Google Fonts ── */
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap");
 
 html {
   scroll-behavior: smooth;
@@ -44,6 +60,26 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  position: relative;
+}
+
+/* ── Sketchpad grid background ── */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--color-hairline) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-hairline) 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.45;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
 }
 
 h1,
@@ -54,11 +90,30 @@ h3 {
 }
 
 ::selection {
-  background: #c7d2fe;
-  color: #1e1b4b;
+  background: var(--color-highlight-yellow);
+  color: var(--color-ink);
 }
 
-/* Horizontal scrollers that fit: no visible track when it does not overflow. */
+/* ── Mono UI labels (the Flim signature micro-voice) ── */
+.label-mono {
+  font-family: var(--font-mono-ui);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* ── Highlighted heading (marker-pen effect) ── */
+.highlight-marker {
+  background-color: var(--color-highlight-yellow);
+  border-radius: 25px;
+  padding: 2px 10px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* ── Scrollbar styles ── */
 .no-scrollbar {
   scrollbar-width: none;
 }
@@ -66,19 +121,19 @@ h3 {
   display: none;
 }
 
-/* Slimmer, quieter scrollbars inside scroll panels. */
 .scroll-thin {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: var(--color-hairline) transparent;
 }
 .scroll-thin::-webkit-scrollbar {
   width: 8px;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
+  background-color: var(--color-hairline);
   border-radius: 9999px;
 }
 
+/* ── Animations ── */
 @keyframes lp-fade-up {
   from {
     opacity: 0;
@@ -104,4 +159,29 @@ h3 {
     opacity: 1;
     transform: translateY(-2px);
   }
+}
+
+/* ── AG Grid Flim theme overrides ── */
+.ag-theme-alpine {
+  --ag-background-color: var(--color-paper) !important;
+  --ag-header-background-color: var(--color-canvas) !important;
+  --ag-odd-row-background-color: var(--color-canvas) !important;
+  --ag-border-color: var(--color-hairline) !important;
+  --ag-row-border-color: var(--color-hairline) !important;
+  --ag-secondary-border-color: var(--color-hairline) !important;
+  --ag-foreground-color: var(--color-ink) !important;
+  --ag-header-foreground-color: var(--color-ink) !important;
+  --ag-font-family: var(--font-sans) !important;
+  --ag-font-size: 13px !important;
+  --ag-row-hover-color: var(--color-mist) !important;
+  --ag-selected-row-background-color: var(--color-mist) !important;
+  --ag-range-selection-border-color: var(--color-ink) !important;
+}
+
+.ag-theme-alpine .ag-header-cell-label {
+  font-family: var(--font-mono-ui) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  font-weight: 400 !important;
 }

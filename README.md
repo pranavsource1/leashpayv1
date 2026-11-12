@@ -149,6 +149,7 @@ PAYPAL_CLIENT_ID=your_paypal_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_secret
 PAYPAL_ENV=sandbox
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_key
+LLM_MODEL=gemini-3.1-flash-lite
 APP_BASE_URL=http://localhost:3000
 ```
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Icon, { type IconName } from "@/components/icons";
+import { formatINR } from "@/lib/money";
 
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
@@ -67,8 +68,8 @@ export default function DashboardPage() {
 
   if (!data) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted">
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-primary" />
+      <div className="flex items-center gap-2 text-sm text-ink/50">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-hairline border-t-ink" />
         Loading dashboard…
       </div>
     );
@@ -76,57 +77,68 @@ export default function DashboardPage() {
 
   const b = data.budget;
   const budgetPct = Math.max(0, Math.min(100, b.remainingPct));
-  const budgetTone = budgetPct > 50 ? "bg-primary" : budgetPct > 20 ? "bg-amber-400" : "bg-red-500";
 
   const selectClass =
-    "h-9 rounded-lg border border-line bg-surface px-2.5 text-xs font-medium text-muted-600 outline-none transition hover:border-line-strong focus:border-primary focus:ring-2 focus:ring-primary/20";
+    "h-9 rounded-lg border border-hairline bg-paper px-2.5 text-xs font-medium text-ink/60 outline-none transition hover:border-ink/30 focus:border-ink";
 
   return (
     <div className="pb-4">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted">
+          <h1
+            className="text-2xl font-bold tracking-tight text-ink"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-ink/50">
             Spending, policy decisions and purchase history for the demo wallet.
           </p>
         </div>
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
-            b.frozen
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-cta-border bg-cta-soft text-emerald-700"
-          }`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-hairline px-3 py-1 text-xs font-semibold text-ink"
         >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              b.frozen ? "bg-ink" : "bg-signal-green"
+            }`}
+          />
           <Icon name={b.frozen ? "lock" : "shieldCheck"} className="h-3.5 w-3.5" />
           {b.frozen ? "Wallet frozen" : "Wallet active"}
         </span>
       </div>
 
       {/* Budget */}
-      <section className="mb-4 rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+      <section className="mb-4 rounded-2xl border border-hairline bg-paper p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-wider text-ink/50"
+              style={{ fontFamily: "var(--font-mono-ui)" }}
+            >
               Monthly budget
             </p>
-            <p className="mt-2 font-display text-3xl font-bold tracking-tight text-foreground">
+            <p
+              className="mt-2 text-3xl font-bold tracking-tight text-ink"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
               {b.remainingFormatted}
             </p>
-            <p className="mt-1 text-sm text-muted">left of {b.totalFormatted}</p>
+            <p className="mt-1 text-sm text-ink/50">left of {b.totalFormatted}</p>
           </div>
-          <span className="shrink-0 rounded-lg bg-primary-soft px-2.5 py-1.5 text-xs font-bold text-primary">
+          <span className="shrink-0 rounded-lg bg-canvas px-2.5 py-1.5 text-xs font-bold text-ink">
             {budgetPct}% left
           </span>
         </div>
 
         <div className="mt-5">
-          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-2 overflow-hidden rounded-full bg-mist">
             <div
-              className={`h-full rounded-full transition-[width] duration-500 ${budgetTone}`}
+              className="h-full rounded-full bg-ink transition-[width] duration-500"
               style={{ width: `${budgetPct}%` }}
             />
           </div>
-          <div className="mt-2 flex justify-between text-xs text-muted-400">
+          <div className="mt-2 flex justify-between text-xs text-ink/40">
             <span>Spent {b.capturedFormatted}</span>
             <span>{Math.max(0, 100 - budgetPct)}% used</span>
           </div>
@@ -139,16 +151,14 @@ export default function DashboardPage() {
           label="Blocked spending"
           value={data.savings.blockedTotalFormatted}
           icon="shield"
-          tone="red"
         />
         <StatCard
           label="Saved on best deals"
           value={data.savings.savingsTotalFormatted}
           icon="tag"
-          tone="emerald"
         />
-        <StatCard label="Captured" value={b.capturedFormatted} icon="receipt" tone="indigo" />
-        <StatCard label="Pending" value={b.reservedFormatted} icon="clock" tone="amber" />
+        <StatCard label="Captured" value={b.capturedFormatted} icon="receipt" />
+        <StatCard label="Pending" value={b.reservedFormatted} icon="clock" />
       </section>
 
       {/* Spend breakdown */}
@@ -174,22 +184,22 @@ export default function DashboardPage() {
       </section>
 
       {/* Decisions */}
-      <section className="mb-4 rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
-          <Icon name="shield" className="h-4 w-4 text-muted-400" />
+      <section className="mb-4 rounded-2xl border border-hairline bg-paper p-5 sm:p-6">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-ink">
+          <Icon name="shield" className="h-4 w-4 text-ink/40" />
           Policy decisions
         </h3>
         {data.spend.byDecision.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-400">No decisions recorded yet</p>
+          <p className="py-6 text-center text-sm text-ink/40">No decisions recorded yet</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {data.spend.byDecision.map((d: any, i: number) => (
               <div
                 key={i}
-                className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${decisionTone(d.decision)}`}
+                className="flex items-center gap-2 rounded-full border border-hairline px-3 py-1.5"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                <span className="text-xs font-semibold">
+                <span className={`h-1.5 w-1.5 rounded-full ${decisionDotColor(d.decision)}`} />
+                <span className="text-xs font-semibold text-ink">
                   {decisionLabel(d.decision)} · {d.count}
                 </span>
               </div>
@@ -199,19 +209,19 @@ export default function DashboardPage() {
       </section>
 
       {/* Purchase history */}
-      <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+      <section className="rounded-2xl border border-hairline bg-paper p-5 sm:p-6">
         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <Icon name="receipt" className="h-4 w-4 text-muted-400" />
+            <h3 className="flex items-center gap-2 text-base font-semibold text-ink">
+              <Icon name="receipt" className="h-4 w-4 text-ink/40" />
               Purchase history
             </h3>
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1 text-xs text-ink/50">
               Showing {filteredPurchases.length} of {purchases.length} purchases
               {filtersActive && (
                 <button
                   onClick={clearFilters}
-                  className="ml-2 font-semibold text-primary underline-offset-2 hover:underline"
+                  className="ml-2 font-semibold text-ink underline-offset-2 hover:underline"
                 >
                   Clear filters
                 </button>
@@ -223,14 +233,14 @@ export default function DashboardPage() {
             <div className="relative min-w-[170px] flex-1">
               <Icon
                 name="search"
-                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-400"
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/40"
               />
               <input
                 type="text"
                 placeholder="Search item or merchant"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 w-full rounded-lg border border-line bg-surface pl-8 pr-3 text-xs text-foreground outline-none transition placeholder:text-muted-400 hover:border-line-strong focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-9 w-full rounded-lg border border-hairline bg-paper pl-8 pr-3 text-xs text-ink outline-none transition placeholder:text-ink/40 hover:border-ink/30 focus:border-ink"
               />
             </div>
 
@@ -279,7 +289,10 @@ export default function DashboardPage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-line text-[10px] font-semibold uppercase tracking-wider text-muted-400">
+              <tr
+                className="border-b border-hairline text-[10px] font-semibold uppercase tracking-wider text-ink/40"
+                style={{ fontFamily: "var(--font-mono-ui)" }}
+              >
                 <th className="py-2.5 pr-4 text-left font-semibold">Item</th>
                 <th className="py-2.5 pr-4 text-left font-semibold">Amount</th>
                 <th className="py-2.5 pr-4 text-left font-semibold">Merchant</th>
@@ -291,7 +304,7 @@ export default function DashboardPage() {
             <tbody>
               {filteredPurchases.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-sm text-muted-400">
+                  <td colSpan={6} className="py-12 text-center text-sm text-ink/40">
                     {purchases.length === 0
                       ? "No purchases yet. Ask the agent to find something."
                       : "No purchases match these filters."}
@@ -301,34 +314,36 @@ export default function DashboardPage() {
                 filteredPurchases.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b border-line/70 transition-colors last:border-0 hover:bg-canvas"
+                    className="border-b border-hairline/70 transition-colors last:border-0 hover:bg-canvas"
                   >
                     <td className="py-3.5 pr-4">
-                      <p className="font-semibold text-foreground">{p.title}</p>
-                      {p.category && <p className="text-[11px] text-muted-400">{p.category}</p>}
+                      <p className="font-semibold text-ink">{p.title}</p>
+                      {p.category && <p className="text-[11px] text-ink/40">{p.category}</p>}
                     </td>
-                    <td className="py-3.5 pr-4 font-semibold tabular-nums text-foreground">
+                    <td className="py-3.5 pr-4 font-semibold tabular-nums text-ink">
                       {formatAmount(p.amount_cents, p.currency)}
                     </td>
-                    <td className="py-3.5 pr-4 text-muted-600">{p.offer_domain ?? "—"}</td>
+                    <td className="py-3.5 pr-4 text-ink/60">{p.offer_domain ?? "—"}</td>
                     <td className="py-3.5 pr-4">
                       <span
-                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${statusTone(p.status)}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full border border-hairline px-2.5 py-0.5 text-[11px] font-semibold ${statusTone(p.status)}`}
                       >
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusDotColor(p.status)}`} />
                         {statusLabel(p.status)}
                       </span>
                     </td>
                     <td className="py-3.5 pr-4">
                       <span
-                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${decisionTone(p.policy_decision)}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full border border-hairline px-2.5 py-0.5 text-[11px] font-semibold ${decisionTone(p.policy_decision)}`}
                       >
+                        <span className={`h-1.5 w-1.5 rounded-full ${decisionDotColor(p.policy_decision)}`} />
                         {decisionLabel(p.policy_decision)}
                       </span>
                     </td>
                     <td className="whitespace-nowrap py-3.5 text-right">
                       {p.status === "PAID" && (
                         <button
-                          className="mr-1 rounded-md px-2.5 py-1 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-50"
+                          className="mr-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-ink/60 transition-colors hover:bg-canvas hover:text-ink"
                           onClick={() => refund(p.id)}
                         >
                           Refund
@@ -338,7 +353,7 @@ export default function DashboardPage() {
                         href={`/r/${p.id}`}
                         target="_blank"
                         rel="noopener"
-                        className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary-soft"
+                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-ink/60 transition-colors hover:bg-canvas hover:text-ink"
                       >
                         Receipt
                         <Icon name="arrowRight" className="h-3 w-3" />
@@ -355,34 +370,28 @@ export default function DashboardPage() {
   );
 }
 
-const STAT_TONES: Record<string, string> = {
-  red: "bg-red-50 text-red-600",
-  emerald: "bg-cta-soft text-emerald-600",
-  indigo: "bg-primary-soft text-primary",
-  amber: "bg-amber-50 text-amber-600",
-};
-
 function StatCard({
   label,
   value,
   icon,
-  tone,
 }: {
   label: string;
   value: string;
   icon: IconName;
-  tone: keyof typeof STAT_TONES;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm transition-shadow hover:shadow-lift sm:p-5">
+    <div className="rounded-2xl border border-hairline bg-paper p-4 sm:p-5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-muted">{label}</p>
-          <p className="mt-1 font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+          <p className="text-xs font-medium text-ink/50">{label}</p>
+          <p
+            className="mt-1 text-xl font-bold tracking-tight text-ink sm:text-2xl"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             {value}
           </p>
         </div>
-        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${STAT_TONES[tone]}`}>
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-canvas text-ink/60">
           <Icon name={icon} className="h-4 w-4" />
         </span>
       </div>
@@ -400,13 +409,13 @@ function BreakdownCard({
   rows: { label: string; total: string; count: number }[];
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
-      <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
-        <Icon name={icon} className="h-4 w-4 text-muted-400" />
+    <div className="rounded-2xl border border-hairline bg-paper p-5 sm:p-6">
+      <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-ink">
+        <Icon name={icon} className="h-4 w-4 text-ink/40" />
         {title}
       </h3>
       {rows.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-400">No purchases yet</p>
+        <p className="py-10 text-center text-sm text-ink/40">No purchases yet</p>
       ) : (
         <div className="space-y-2">
           {rows.map((row, i) => (
@@ -414,12 +423,12 @@ function BreakdownCard({
               key={i}
               className="flex items-center justify-between gap-3 rounded-lg bg-canvas px-3 py-2"
             >
-              <span className="min-w-0 truncate text-sm font-medium text-foreground">
+              <span className="min-w-0 truncate text-sm font-medium text-ink">
                 {row.label}
               </span>
-              <span className="shrink-0 text-sm font-semibold tabular-nums text-muted-600">
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-ink/60">
                 {row.total}
-                <span className="ml-1 text-xs font-normal text-muted-400">({row.count})</span>
+                <span className="ml-1 text-xs font-normal text-ink/40">({row.count})</span>
               </span>
             </div>
           ))}
@@ -430,15 +439,7 @@ function BreakdownCard({
 }
 
 function formatAmount(cents: number, currency: string) {
-  const value = (cents ?? 0) / 100;
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency || "USD",
-    }).format(value);
-  } catch {
-    return `$${value.toFixed(2)}`;
-  }
+  return formatINR(cents ?? 0);
 }
 
 function statusLabel(status: string) {
@@ -450,10 +451,17 @@ function statusLabel(status: string) {
 }
 
 function statusTone(status: string) {
-  if (status === "PAID") return "bg-cta-soft text-emerald-700";
-  if (status === "PENDING_APPROVAL") return "bg-amber-50 text-amber-700";
-  if (status === "DENIED") return "bg-red-50 text-red-700";
-  return "bg-slate-100 text-muted-600";
+  if (status === "PAID") return "text-ink";
+  if (status === "PENDING_APPROVAL") return "text-ink/70";
+  if (status === "DENIED") return "text-ink/70";
+  return "text-ink/50";
+}
+
+function statusDotColor(status: string) {
+  if (status === "PAID") return "bg-signal-green";
+  if (status === "PENDING_APPROVAL") return "bg-highlight-yellow";
+  if (status === "DENIED") return "bg-ink";
+  return "bg-ink/30";
 }
 
 function decisionLabel(decision: string) {
@@ -464,8 +472,15 @@ function decisionLabel(decision: string) {
 }
 
 function decisionTone(decision: string) {
-  if (decision === "ALLOW") return "bg-cta-soft text-emerald-700";
-  if (decision === "REQUIRE_APPROVAL") return "bg-amber-50 text-amber-700";
-  if (decision === "DENY") return "bg-red-50 text-red-700";
-  return "bg-slate-100 text-muted-600";
+  if (decision === "ALLOW") return "text-ink";
+  if (decision === "REQUIRE_APPROVAL") return "text-ink/70";
+  if (decision === "DENY") return "text-ink/70";
+  return "text-ink/50";
+}
+
+function decisionDotColor(decision: string) {
+  if (decision === "ALLOW") return "bg-signal-green";
+  if (decision === "REQUIRE_APPROVAL") return "bg-highlight-yellow";
+  if (decision === "DENY") return "bg-ink";
+  return "bg-ink/30";
 }

@@ -4,7 +4,7 @@
  * No network calls, no LLM — easy to unit test.
  */
 
-import { formatUSD } from "../money";
+import { formatINR } from "../money";
 import type {
   Policy,
   PurchaseRequest,
@@ -104,20 +104,20 @@ export function evaluate(
 
   // ── Rule 7: Per-purchase cap ──
   if (amt > policy.perPurchaseCap) {
-    deny("per_purchase_cap", `${formatUSD(amt)} exceeds per-purchase cap of ${formatUSD(policy.perPurchaseCap)}`);
+    deny("per_purchase_cap", `${formatINR(amt)} exceeds per-purchase cap of ${formatINR(policy.perPurchaseCap)}`);
     return finalize(decision, reasons, trace, remainingAfter, request, policy, ledger);
   }
-  pass("per_purchase_cap", `${formatUSD(amt)} <= ${formatUSD(policy.perPurchaseCap)} cap`);
+  pass("per_purchase_cap", `${formatINR(amt)} <= ${formatINR(policy.perPurchaseCap)} cap`);
 
   // ── Rule 8: Monthly budget ──
   if (totalSpend + amt > policy.monthlyBudget) {
     deny(
       "monthly_budget",
-      `${formatUSD(amt)} + current spend ${formatUSD(totalSpend)} = ${formatUSD(totalSpend + amt)} exceeds monthly budget ${formatUSD(policy.monthlyBudget)}`
+      `${formatINR(amt)} + current spend ${formatINR(totalSpend)} = ${formatINR(totalSpend + amt)} exceeds monthly budget ${formatINR(policy.monthlyBudget)}`
     );
     return finalize(decision, reasons, trace, remainingAfter, request, policy, ledger);
   }
-  pass("monthly_budget", `${formatUSD(amt)} + ${formatUSD(totalSpend)} = ${formatUSD(totalSpend + amt)} <= ${formatUSD(policy.monthlyBudget)} budget`);
+  pass("monthly_budget", `${formatINR(amt)} + ${formatINR(totalSpend)} = ${formatINR(totalSpend + amt)} <= ${formatINR(policy.monthlyBudget)} budget`);
 
   // ── Rule 9: Velocity check ──
   const windowMs = policy.velocityWindowHours * 60 * 60 * 1000;
@@ -128,10 +128,10 @@ export function evaluate(
   if (recentTotal + amt > policy.velocityLimitCents) {
     requireApproval(
       "velocity",
-      `${formatUSD(recentTotal + amt)} in purchases within ${policy.velocityWindowHours}h exceeds velocity limit ${formatUSD(policy.velocityLimitCents)}`
+      `${formatINR(recentTotal + amt)} in purchases within ${policy.velocityWindowHours}h exceeds velocity limit ${formatINR(policy.velocityLimitCents)}`
     );
   } else {
-    pass("velocity", `${formatUSD(recentTotal + amt)} within ${policy.velocityWindowHours}h <= ${formatUSD(policy.velocityLimitCents)} velocity limit`);
+    pass("velocity", `${formatINR(recentTotal + amt)} within ${policy.velocityWindowHours}h <= ${formatINR(policy.velocityLimitCents)} velocity limit`);
   }
 
   // ── Rule 10: Price vs history ──
@@ -140,7 +140,7 @@ export function evaluate(
     if (pctAbove > policy.maxPriceVsHistoryPct) {
       requireApproval(
         "price_vs_history",
-        `Price is ${pctAbove.toFixed(1)}% above historical average ${formatUSD(request.priceHistoryAvgCents)} (threshold: ${policy.maxPriceVsHistoryPct}%)`
+        `Price is ${pctAbove.toFixed(1)}% above historical average ${formatINR(request.priceHistoryAvgCents)} (threshold: ${policy.maxPriceVsHistoryPct}%)`
       );
     } else {
       pass("price_vs_history", `Price is ${pctAbove.toFixed(1)}% vs average (threshold: ${policy.maxPriceVsHistoryPct}%)`);
@@ -153,10 +153,10 @@ export function evaluate(
   if (amt > policy.requireApprovalOver) {
     requireApproval(
       "approval_threshold",
-      `${formatUSD(amt)} exceeds approval threshold ${formatUSD(policy.requireApprovalOver)}`
+      `${formatINR(amt)} exceeds approval threshold ${formatINR(policy.requireApprovalOver)}`
     );
   } else {
-    pass("approval_threshold", `${formatUSD(amt)} <= ${formatUSD(policy.requireApprovalOver)} threshold`);
+    pass("approval_threshold", `${formatINR(amt)} <= ${formatINR(policy.requireApprovalOver)} threshold`);
   }
 
   if (softApproval) {

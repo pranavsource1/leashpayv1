@@ -31,6 +31,7 @@ Edit `.env.local` and add your API keys:
 4. Copy the key and add to `.env.local`:
    ```
    GOOGLE_GENERATIVE_AI_API_KEY=your_key_here
+   LLM_MODEL=gemini-3.1-flash-lite
    ```
 
 #### Get Channel3 API Key (1000 free searches/month)
@@ -206,4 +207,3 @@ For production, use Render's managed Postgres:
 - Review the implementation plans in the project root
 - PayPal Developer Docs: https://developer.paypal.com/docs
 - Channel3 Docs: https://docs.trychannel3.com
-

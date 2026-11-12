@@ -4,9 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { generateText } from "ai";
+import { generateText, stepCountIs } from "ai";
 import { google } from "@ai-sdk/google";
-import { z } from "zod";
 import {
   searchProductsTool,
   getProductTool,
@@ -20,10 +19,12 @@ import { SYSTEM_PROMPT } from "@/lib/agent/prompt";
 import { createAuditLog } from "@/lib/db";
 
 const DEMO_USER = "demo-user-1";
+const DEFAULT_LLM_MODEL = "gemini-3.1-flash-lite";
+const AGENT_TIMEOUT_MS = 30_000;
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, history = [] } = await req.json();
+    const { message, history = [], toolContext = [] } = await req.json();
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
@@ -48,9 +49,33 @@ export async function POST(req: NextRequest) {
       { role: "user" as const, content: message },
     ];
 
+    const directBuy = message.match(/^buy\s+(\S+)\s+(\S+)$/i);
+    const contextualBuy = resolveContextualBuy(message, toolContext);
+    if (directBuy || contextualBuy) {
+      const [, productId, offerId] = directBuy ?? [
+        "",
+        contextualBuy!.productId,
+        contextualBuy!.offerId,
+      ];
+      const policyResult = await checkPolicyTool.execute({ productId, offerId });
+      const toolResults = [{ tool: "check_policy", result: policyResult }];
+
+      if (policyResult.type === "policy_check" && policyResult.decision !== "DENY") {
+        toolResults.push({
+          tool: "request_purchase",
+          result: await requestPurchaseTool.execute({ productId, offerId }),
+        });
+      }
+
+      return NextResponse.json({
+        reply: buildToolReply(toolResults),
+        toolResults,
+      });
+    }
+
     // Use Google Gemini with tool calling
     const result = await generateText({
-      model: google("gemini-pro"),
+      model: google(process.env.LLM_MODEL || DEFAULT_LLM_MODEL),
       system: SYSTEM_PROMPT,
       messages,
       tools: {
@@ -62,7 +87,9 @@ export async function POST(req: NextRequest) {
         get_budget_status: getBudgetStatusTool as any,
         get_price_history: getPriceHistoryTool as any,
       },
-      maxSteps: 5,
+      stopWhen: stepCountIs(5),
+      maxRetries: 0,
+      timeout: AGENT_TIMEOUT_MS,
       temperature: 0.7,
     });
 
@@ -82,11 +109,13 @@ export async function POST(req: NextRequest) {
     // Extract tool results
     const toolResults = result.toolResults?.map((toolResult: any) => ({
       tool: toolResult.toolName,
-      result: toolResult.result
+      result: toolResult.result ?? toolResult.output,
     })) || [];
 
+    const reply = result.text || buildToolReply(toolResults);
+
     return NextResponse.json({
-      reply: result.text,
+      reply,
       toolResults
     });
 
@@ -94,16 +123,101 @@ export async function POST(req: NextRequest) {
     console.error("Agent error:", err);
     
     // Better error messages
-    if (err.message?.includes("API key")) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+
+    if (errorMessage.includes("API key")) {
       return NextResponse.json(
         { error: "Google AI API key is invalid or missing. Please check your .env.local file." },
         { status: 500 }
       );
     }
-    
+
+    if (
+      errorMessage.includes("timed out") ||
+      errorMessage.includes("aborted") ||
+      errorMessage.includes("high demand") ||
+      errorMessage.includes("503")
+    ) {
+      return NextResponse.json(
+        { error: "Google AI is temporarily busy. Please try again in a few seconds." },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
-      { error: err.message || "Agent processing failed" },
+      { error: errorMessage || "Agent processing failed" },
       { status: 500 }
     );
   }
+}
+
+function resolveContextualBuy(
+  message: string,
+  toolContext: Array<{ tool?: string; result?: any }>,
+): { productId: string; offerId: string } | null {
+  const normalized = message.trim().toLowerCase();
+  const isPurchaseIntent =
+    /\b(buy|purchase|order|get|checkout|go ahead)\b/.test(normalized) ||
+    /^(yes|yeah|yep|sure|okay|ok)\b/.test(normalized);
+  if (!isPurchaseIntent) return null;
+
+  const searchResults = toolContext
+    .map((entry) => entry.result)
+    .filter((result) => result?.type === "search_results")
+    .at(-1);
+  if (!searchResults?.products?.length) return null;
+
+  const product = searchResults.products[0];
+  const requestedMerchant = product.offers?.find((offer: any) =>
+    normalized.includes(String(offer.merchant).toLowerCase()),
+  );
+  const offer =
+    requestedMerchant ??
+    product.offers
+      ?.filter((candidate: any) => candidate.inStock)
+      .sort((a: any, b: any) => {
+        const priceA = Number(String(a.price).replace(/[^0-9.]/g, ""));
+        const priceB = Number(String(b.price).replace(/[^0-9.]/g, ""));
+        return priceA - priceB;
+      })[0] ??
+    product.offers?.[0];
+
+  return product.id && offer?.id ? { productId: product.id, offerId: offer.id } : null;
+}
+
+function buildToolReply(toolResults: Array<{ tool: string; result: any }>): string {
+  const latest = toolResults[toolResults.length - 1]?.result;
+  if (!latest) return "I couldn't complete that request. Please try again.";
+
+  if (latest.type === "purchase_requested") {
+    const decision =
+      latest.decision === "REQUIRE_APPROVAL"
+        ? "The purchase request is ready and requires approval."
+        : "The purchase request is ready for PayPal confirmation.";
+    return `${decision} Use the PayPal approval button below to continue.`;
+  }
+
+  if (latest.type === "purchase_denied") {
+    return `I couldn't place that purchase because the policy denied it: ${(latest.reasons ?? []).join("; ")}`;
+  }
+
+  if (latest.type === "purchase_error") {
+    return `I couldn't create the PayPal order: ${(latest.reasons ?? []).join("; ")} Check your PayPal sandbox credentials and try again.`;
+  }
+
+  if (latest.type === "policy_check") {
+    return `Policy decision: ${latest.decision}. ${(latest.reasons ?? []).join("; ")}`;
+  }
+
+  if (latest.type === "search_results") {
+    return latest.resultCount
+      ? `I found ${latest.resultCount} product options below.`
+      : "I couldn't find matching products.";
+  }
+
+  if (latest.type === "budget_status") {
+    return `You have ${latest.remaining} remaining from your monthly budget.`;
+  }
+
+  return "I completed that request. See the details below.";
 }
