@@ -1,16 +1,21 @@
 "use client";
+
 import { useState, useEffect } from "react";
+import Icon from "@/components/icons";
 
 export default function SettingsPage() {
   const [policy, setPolicy] = useState<any>(null);
   const [version, setVersion] = useState(0);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [msgError, setMsgError] = useState(false);
   const [nlInput, setNlInput] = useState("");
   const [nlResult, setNlResult] = useState<any>(null);
   const [compiling, setCompiling] = useState(false);
 
-  useEffect(() => { loadPolicy(); }, []);
+  useEffect(() => {
+    loadPolicy();
+  }, []);
 
   async function loadPolicy() {
     const res = await fetch("/api/policy");
@@ -29,9 +34,11 @@ export default function SettingsPage() {
     });
     const data = await res.json();
     if (data.error) {
-      setMsg(`❌ ${data.error}`);
+      setMsgError(true);
+      setMsg(data.error);
     } else {
-      setMsg(`✅ Saved! Version ${data.version}, Mandate: ${data.mandateHash}`);
+      setMsgError(false);
+      setMsg(`Policy saved. Version ${data.version} · Mandate ${data.mandateHash}`);
       setVersion(data.version);
       setPolicy(data.policy);
     }
@@ -56,154 +63,365 @@ export default function SettingsPage() {
       setPolicy(nlResult.proposed);
       setNlResult(null);
       setNlInput("");
-      setMsg("Changes applied — click Save to confirm");
+      setMsgError(false);
+      setMsg("Changes applied — save to confirm.");
     }
   }
 
-  if (!policy) return <p>Loading...</p>;
+  if (!policy) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-primary" />
+        Loading policy…
+      </div>
+    );
+  }
 
-  const fieldStyle = { width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "14px", boxSizing: "border-box" as const };
-  const labelStyle = { display: "block", fontWeight: "bold" as const, marginBottom: "4px", fontSize: "13px" };
-  const groupStyle = { marginBottom: "16px" };
+  const inputClass =
+    "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-400 hover:border-line-strong focus:border-primary focus:ring-2 focus:ring-primary/20";
+  const labelClass = "mb-1.5 block text-xs font-semibold text-foreground";
+  const hintClass = "mt-1 block text-[11px] text-muted-400";
+  const cardClass = "rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6";
+  const headingClass = "mb-4 flex items-center gap-2 text-base font-semibold text-foreground";
 
   return (
-    <div>
-      <h1>⚙️ Leash Settings</h1>
-      <p style={{ color: "#666" }}>Policy version: {version} | Configure the spending rules for your AI agent.</p>
+    <div className="pb-4">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Spending policy</h1>
+          <p className="mt-1 text-sm text-muted">
+            Version {version} · the rules your agent must satisfy before it can spend.
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-muted">
+          <Icon name="shield" className="h-3.5 w-3.5 text-primary" />
+          Enforced server-side
+        </span>
+      </div>
 
-      {msg && <div style={{ padding: "10px", borderRadius: "6px", background: msg.startsWith("✅") ? "#d4edda" : "#f8d7da", marginBottom: "16px" }}>{msg}</div>}
+      {msg && (
+        <div
+          className={`mb-4 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm ${
+            msgError
+              ? "border-red-200 bg-red-50 text-red-800"
+              : "border-cta-border bg-cta-soft text-emerald-800"
+          }`}
+        >
+          <Icon
+            name={msgError ? "alert" : "check"}
+            className="mt-0.5 h-4 w-4 shrink-0"
+            strokeWidth={2.2}
+          />
+          <span className="break-words">{msg}</span>
+        </div>
+      )}
 
-      {/* Natural Language Input */}
-      <div style={{ background: "#e8f0fe", padding: "16px", borderRadius: "8px", marginBottom: "20px" }}>
-        <h3 style={{ marginTop: 0 }}>📝 Set rules in plain English</h3>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <input value={nlInput} onChange={e => setNlInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && compileNL()}
+      {/* Natural language rules */}
+      <section className="mb-4 rounded-2xl border border-primary/15 bg-primary-soft/60 p-5 sm:p-6">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <Icon name="sparkles" className="h-4 w-4 text-primary" />
+          Set rules in plain English
+        </h2>
+        <p className="mt-1 text-xs text-muted">
+          Describe the limit and the policy compiler turns it into structured rules for review.
+        </p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input
+            value={nlInput}
+            onChange={(e) => setNlInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && compileNL()}
             placeholder='e.g. "Spend up to $500 this month, ask me above $50, no gift cards"'
-            style={{ ...fieldStyle, flex: 1 }} />
-          <button onClick={compileNL} disabled={compiling}
-            style={{ padding: "8px 20px", borderRadius: "6px", background: "#003087", color: "white", border: "none", cursor: "pointer" }}>
-            {compiling ? "..." : "Apply"}
+            className={`${inputClass} sm:flex-1`}
+          />
+          <button
+            onClick={compileNL}
+            disabled={compiling}
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            {compiling ? "Compiling…" : "Apply"}
           </button>
         </div>
+
         {nlResult && (
-          <div style={{ marginTop: "12px", background: "white", padding: "12px", borderRadius: "6px" }}>
-            <p style={{ fontWeight: "bold" }}>Proposed changes:</p>
-            {nlResult.changes?.map((c: any, i: number) => (
-              <div key={i} style={{ fontSize: "13px", padding: "4px 0", color: c.isLoosening ? "#c00" : "#080" }}>
-                {c.isLoosening ? "⚠️" : "✓"} <strong>{c.field}</strong>: {JSON.stringify(c.from)} → {JSON.stringify(c.to)}
-                {c.isLoosening && " (loosening)"}
-              </div>
-            ))}
-            <p style={{ fontSize: "13px", marginTop: "8px", color: "#666" }}>{nlResult.summary}</p>
-            <button onClick={applyNLChanges} style={{ marginTop: "8px", padding: "6px 16px", borderRadius: "4px", background: "#28a745", color: "white", border: "none", cursor: "pointer" }}>
-              Accept Changes
+          <div className="mt-3 rounded-xl border border-line bg-surface p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+              Proposed changes
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {nlResult.changes?.map((c: any, i: number) => (
+                <li key={i} className="flex items-start gap-2 text-xs">
+                  <Icon
+                    name={c.isLoosening ? "alert" : "check"}
+                    className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${c.isLoosening ? "text-amber-500" : "text-cta"}`}
+                    strokeWidth={2.2}
+                  />
+                  <span className="text-muted-600">
+                    <strong className="font-semibold text-foreground">{c.field}</strong>:{" "}
+                    {JSON.stringify(c.from)} → {JSON.stringify(c.to)}
+                    {c.isLoosening && <span className="text-amber-600"> (loosening)</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs leading-relaxed text-muted">{nlResult.summary}</p>
+            <button
+              onClick={applyNLChanges}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-cta-border bg-cta-soft px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+            >
+              <Icon name="check" className="h-3.5 w-3.5" strokeWidth={2.4} />
+              Accept changes
             </button>
           </div>
         )}
-      </div>
+      </section>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-        <div style={{ background: "white", padding: "20px", borderRadius: "8px", border: "1px solid #ddd" }}>
-          <h3 style={{ marginTop: 0 }}>💰 Budget & Limits</h3>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Monthly Budget (cents)</label>
-            <input type="number" value={policy.monthlyBudget} onChange={e => setPolicy({ ...policy, monthlyBudget: parseInt(e.target.value) || 0 })} style={fieldStyle} />
-            <small style={{ color: "#666" }}>${(policy.monthlyBudget / 100).toFixed(2)}</small>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className={cardClass}>
+          <h2 className={headingClass}>
+            <Icon name="wallet" className="h-4 w-4 text-muted-400" />
+            Budget &amp; limits
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className={labelClass}>Monthly budget (cents)</label>
+              <input
+                type="number"
+                value={policy.monthlyBudget}
+                onChange={(e) => setPolicy({ ...policy, monthlyBudget: parseInt(e.target.value) || 0 })}
+                className={inputClass}
+              />
+              <span className={hintClass}>${(policy.monthlyBudget / 100).toFixed(2)}</span>
+            </div>
+            <div>
+              <label className={labelClass}>Per-purchase cap (cents)</label>
+              <input
+                type="number"
+                value={policy.perPurchaseCap}
+                onChange={(e) =>
+                  setPolicy({ ...policy, perPurchaseCap: parseInt(e.target.value) || 0 })
+                }
+                className={inputClass}
+              />
+              <span className={hintClass}>${(policy.perPurchaseCap / 100).toFixed(2)}</span>
+            </div>
+            <div>
+              <label className={labelClass}>Require approval over (cents)</label>
+              <input
+                type="number"
+                value={policy.requireApprovalOver}
+                onChange={(e) =>
+                  setPolicy({ ...policy, requireApprovalOver: parseInt(e.target.value) || 0 })
+                }
+                className={inputClass}
+              />
+              <span className={hintClass}>${(policy.requireApprovalOver / 100).toFixed(2)}</span>
+            </div>
+            <div>
+              <label className={labelClass}>Auto-approve under (cents)</label>
+              <input
+                type="number"
+                value={policy.autoApproveUnder}
+                onChange={(e) =>
+                  setPolicy({ ...policy, autoApproveUnder: parseInt(e.target.value) || 0 })
+                }
+                className={inputClass}
+              />
+            </div>
           </div>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Per-Purchase Cap (cents)</label>
-            <input type="number" value={policy.perPurchaseCap} onChange={e => setPolicy({ ...policy, perPurchaseCap: parseInt(e.target.value) || 0 })} style={fieldStyle} />
-            <small style={{ color: "#666" }}>${(policy.perPurchaseCap / 100).toFixed(2)}</small>
-          </div>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Require Approval Over (cents)</label>
-            <input type="number" value={policy.requireApprovalOver} onChange={e => setPolicy({ ...policy, requireApprovalOver: parseInt(e.target.value) || 0 })} style={fieldStyle} />
-            <small style={{ color: "#666" }}>${(policy.requireApprovalOver / 100).toFixed(2)}</small>
-          </div>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Auto-Approve Under (cents)</label>
-            <input type="number" value={policy.autoApproveUnder} onChange={e => setPolicy({ ...policy, autoApproveUnder: parseInt(e.target.value) || 0 })} style={fieldStyle} />
-          </div>
-        </div>
+        </section>
 
-        <div style={{ background: "white", padding: "20px", borderRadius: "8px", border: "1px solid #ddd" }}>
-          <h3 style={{ marginTop: 0 }}>🏪 Merchants & Categories</h3>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Allowed Merchants (comma-separated)</label>
-            <input value={policy.allowedMerchants?.join(", ") || ""} onChange={e => setPolicy({ ...policy, allowedMerchants: e.target.value ? e.target.value.split(",").map((s: string) => s.trim()) : [] })} style={fieldStyle}
-              placeholder="e.g. bestbuy.com, walmart.com, target.com" />
+        <section className={cardClass}>
+          <h2 className={headingClass}>
+            <Icon name="store" className="h-4 w-4 text-muted-400" />
+            Merchants &amp; categories
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className={labelClass}>Allowed merchants (comma-separated)</label>
+              <input
+                value={policy.allowedMerchants?.join(", ") || ""}
+                onChange={(e) =>
+                  setPolicy({
+                    ...policy,
+                    allowedMerchants: e.target.value
+                      ? e.target.value.split(",").map((s: string) => s.trim())
+                      : [],
+                  })
+                }
+                placeholder="e.g. bestbuy.com, walmart.com, target.com"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Blocked merchants (comma-separated)</label>
+              <input
+                value={policy.blockedMerchants?.join(", ") || ""}
+                onChange={(e) =>
+                  setPolicy({
+                    ...policy,
+                    blockedMerchants: e.target.value
+                      ? e.target.value.split(",").map((s: string) => s.trim())
+                      : [],
+                  })
+                }
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Blocked categories (comma-separated)</label>
+              <input
+                value={policy.blockedCategories?.join(", ") || ""}
+                onChange={(e) =>
+                  setPolicy({
+                    ...policy,
+                    blockedCategories: e.target.value
+                      ? e.target.value.split(",").map((s: string) => s.trim())
+                      : [],
+                  })
+                }
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Guardian label</label>
+              <input
+                value={policy.guardianLabel || ""}
+                onChange={(e) => setPolicy({ ...policy, guardianLabel: e.target.value || null })}
+                placeholder="e.g. Mom, Manager"
+                className={inputClass}
+              />
+            </div>
           </div>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Blocked Merchants (comma-separated)</label>
-            <input value={policy.blockedMerchants?.join(", ") || ""} onChange={e => setPolicy({ ...policy, blockedMerchants: e.target.value ? e.target.value.split(",").map((s: string) => s.trim()) : [] })} style={fieldStyle} />
-          </div>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Blocked Categories (comma-separated)</label>
-            <input value={policy.blockedCategories?.join(", ") || ""} onChange={e => setPolicy({ ...policy, blockedCategories: e.target.value ? e.target.value.split(",").map((s: string) => s.trim()) : [] })} style={fieldStyle} />
-          </div>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Guardian Label</label>
-            <input value={policy.guardianLabel || ""} onChange={e => setPolicy({ ...policy, guardianLabel: e.target.value || null })} style={fieldStyle} placeholder="e.g. Mom, Manager" />
-          </div>
-        </div>
+        </section>
 
-        <div style={{ background: "white", padding: "20px", borderRadius: "8px", border: "1px solid #ddd" }}>
-          <h3 style={{ marginTop: 0 }}>🔒 Safety Controls</h3>
-          <div style={groupStyle}>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-              <input type="checkbox" checked={policy.frozen} onChange={e => setPolicy({ ...policy, frozen: e.target.checked })} />
-              <strong style={{ color: policy.frozen ? "#c00" : "#333" }}>🛑 Kill Switch (Freeze All Spending)</strong>
+        <section className={cardClass}>
+          <h2 className={headingClass}>
+            <Icon name="shieldCheck" className="h-4 w-4 text-muted-400" />
+            Safety controls
+          </h2>
+          <div className="space-y-4">
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${
+                policy.frozen ? "border-red-200 bg-red-50" : "border-line bg-canvas hover:border-line-strong"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={policy.frozen}
+                onChange={(e) => setPolicy({ ...policy, frozen: e.target.checked })}
+                className="mt-0.5 h-4 w-4 accent-red-600"
+              />
+              <span>
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <Icon
+                    name="lock"
+                    className={`h-3.5 w-3.5 ${policy.frozen ? "text-red-600" : "text-muted-400"}`}
+                  />
+                  Kill switch
+                </span>
+                <span className="mt-0.5 block text-xs text-muted">
+                  Freeze all spending until you turn this back off.
+                </span>
+              </span>
             </label>
-          </div>
-          <div style={groupStyle}>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-              <input type="checkbox" checked={policy.requireInStock} onChange={e => setPolicy({ ...policy, requireInStock: e.target.checked })} />
-              Require items in stock
-            </label>
-          </div>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Max Price vs History (%)</label>
-            <input type="number" value={policy.maxPriceVsHistoryPct} onChange={e => setPolicy({ ...policy, maxPriceVsHistoryPct: parseInt(e.target.value) || 0 })} style={fieldStyle} />
-          </div>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Velocity Window (hours)</label>
-            <input type="number" value={policy.velocityWindowHours} onChange={e => setPolicy({ ...policy, velocityWindowHours: parseInt(e.target.value) || 24 })} style={fieldStyle} />
-          </div>
-          <div style={groupStyle}>
-            <label style={labelStyle}>Velocity Limit (cents)</label>
-            <input type="number" value={policy.velocityLimitCents} onChange={e => setPolicy({ ...policy, velocityLimitCents: parseInt(e.target.value) || 0 })} style={fieldStyle} />
-          </div>
-        </div>
 
-        <div style={{ background: "white", padding: "20px", borderRadius: "8px", border: "1px solid #ddd" }}>
-          <h3 style={{ marginTop: 0 }}>📋 Policy Preview (JSON)</h3>
-          <pre style={{ background: "#f5f5f5", padding: "12px", borderRadius: "4px", fontSize: "11px", overflow: "auto", maxHeight: "300px" }}>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-canvas p-3 transition-colors hover:border-line-strong">
+              <input
+                type="checkbox"
+                checked={policy.requireInStock}
+                onChange={(e) => setPolicy({ ...policy, requireInStock: e.target.checked })}
+                className="mt-0.5 h-4 w-4 accent-indigo-600"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-foreground">
+                  Require items in stock
+                </span>
+                <span className="mt-0.5 block text-xs text-muted">
+                  Block purchases from offers that are unavailable.
+                </span>
+              </span>
+            </label>
+
+            <div>
+              <label className={labelClass}>Max price vs history (%)</label>
+              <input
+                type="number"
+                value={policy.maxPriceVsHistoryPct}
+                onChange={(e) =>
+                  setPolicy({ ...policy, maxPriceVsHistoryPct: parseInt(e.target.value) || 0 })
+                }
+                className={inputClass}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Velocity window (h)</label>
+                <input
+                  type="number"
+                  value={policy.velocityWindowHours}
+                  onChange={(e) =>
+                    setPolicy({ ...policy, velocityWindowHours: parseInt(e.target.value) || 24 })
+                  }
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Velocity limit (cents)</label>
+                <input
+                  type="number"
+                  value={policy.velocityLimitCents}
+                  onChange={(e) =>
+                    setPolicy({ ...policy, velocityLimitCents: parseInt(e.target.value) || 0 })
+                  }
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className={cardClass}>
+          <h2 className={headingClass}>
+            <Icon name="list" className="h-4 w-4 text-muted-400" />
+            Policy preview
+          </h2>
+          <pre className="scroll-thin max-h-[300px] overflow-auto rounded-xl border border-line bg-canvas p-3 font-mono text-[11px] leading-relaxed text-muted-600">
             {JSON.stringify(policy, null, 2)}
           </pre>
-        </div>
+        </section>
       </div>
 
-      <div style={{ marginTop: "20px", display: "flex", gap: "12px" }}>
-        <button onClick={savePolicy} disabled={saving}
-          style={{ padding: "12px 32px", borderRadius: "8px", background: "#003087", color: "white", border: "none", fontWeight: "bold", fontSize: "16px", cursor: "pointer" }}>
-          {saving ? "Saving..." : "💾 Save Policy"}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          onClick={savePolicy}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          <Icon name="check" className="h-4 w-4" strokeWidth={2.4} />
+          {saving ? "Saving…" : "Save policy"}
         </button>
-        <button onClick={loadPolicy}
-          style={{ padding: "12px 24px", borderRadius: "8px", background: "#eee", border: "1px solid #ccc", cursor: "pointer" }}>
-          ↩ Reset
+        <button
+          onClick={loadPolicy}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-muted-600 transition-colors hover:border-line-strong hover:text-foreground"
+        >
+          <Icon name="refresh" className="h-4 w-4" />
+          Reset
         </button>
       </div>
 
-      {/* Policy Summary */}
-      <div style={{ marginTop: "20px", padding: "16px", background: "#f8f9fa", borderRadius: "8px", border: "1px solid #ddd" }}>
-        <p style={{ margin: 0, fontSize: "14px" }}>
-          <strong>Summary:</strong> The agent may spend up to ${(policy.monthlyBudget / 100).toFixed(0)} this month,
-          at most ${(policy.perPurchaseCap / 100).toFixed(0)} per purchase,
-          and must ask you above ${(policy.requireApprovalOver / 100).toFixed(0)}.
-          {policy.allowedMerchants?.length > 0 && ` Only from ${policy.allowedMerchants.join(", ")}.`}
-          {policy.blockedCategories?.length > 0 && ` ${policy.blockedCategories.join(" and ")} blocked.`}
-          {policy.frozen && " ⚠️ CURRENTLY FROZEN."}
+      <div className="mt-4 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+        <p className="text-sm leading-relaxed text-muted-600">
+          <span className="font-semibold text-foreground">Summary: </span>
+          The agent may spend up to ${(policy.monthlyBudget / 100).toFixed(0)} this month, at most $
+          {(policy.perPurchaseCap / 100).toFixed(0)} per purchase, and must ask you above $
+          {(policy.requireApprovalOver / 100).toFixed(0)}.
+          {policy.allowedMerchants?.length > 0 &&
+            ` Only from ${policy.allowedMerchants.join(", ")}.`}
+          {policy.blockedCategories?.length > 0 &&
+            ` ${policy.blockedCategories.join(" and ")} blocked.`}
+          {policy.frozen && (
+            <span className="ml-1 font-semibold text-red-600">Currently frozen.</span>
+          )}
         </p>
       </div>
     </div>

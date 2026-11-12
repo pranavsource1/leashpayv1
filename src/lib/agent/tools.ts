@@ -8,7 +8,7 @@ import { evaluate } from "../policy/engine";
 import { getPolicyConfig } from "../db";
 import * as db from "../db";
 import { requestPurchase } from "../paypal/orders";
-import { formatUSD, currentMonth } from "../money";
+import { formatINR, formatCurrency, currentMonth } from "../money";
 import type { Policy } from "../policy/schema";
 
 const DEMO_USER = "demo-user-1";
@@ -43,14 +43,14 @@ export const searchProductsTool = {
         brand: p.brand,
         category: p.category,
         imageUrl: p.imageUrl,
-        bestPrice: formatUSD(Math.min(...p.offers.map(o => o.priceCents))),
+        bestPrice: formatINR(Math.min(...p.offers.map(o => o.priceCents))),
         offerCount: p.offers.length,
         inStock: p.offers.some(o => o.inStock),
         offers: p.offers.map(o => ({
           id: o.id,
           merchant: o.merchantName,
           domain: o.merchant,
-          price: formatUSD(o.priceCents),
+          price: formatINR(o.priceCents),
           inStock: o.inStock,
         })),
       })),
@@ -82,7 +82,7 @@ export const getProductTool = {
           id: o.id,
           merchant: o.merchantName,
           domain: o.merchant,
-          price: formatUSD(o.priceCents),
+          price: formatINR(o.priceCents),
           priceCents: o.priceCents,
           currency: o.currency,
           inStock: o.inStock,
@@ -108,19 +108,20 @@ export const compareOffersTool = {
 
     return {
       type: "offer_comparison" as const,
+      productId: args.productId,
       productTitle: product.title,
       offers: offers.map(o => ({
         id: o.id,
         merchant: o.merchantName,
         domain: o.merchant,
-        price: formatUSD(o.priceCents),
+        price: formatINR(o.priceCents),
         priceCents: o.priceCents,
         inStock: o.inStock,
         isBestDeal: o.id === bestOffer?.id,
       })),
       bestDeal: bestOffer ? {
         merchant: bestOffer.merchantName,
-        price: formatUSD(bestOffer.priceCents),
+        price: formatINR(bestOffer.priceCents),
       } : null,
     };
   },
@@ -140,9 +141,9 @@ export const getPriceHistoryTool = {
     return {
       type: "price_history" as const,
       productId: history.productId,
-      average: formatUSD(history.averageCents),
-      min: formatUSD(history.minCents),
-      max: formatUSD(history.maxCents),
+      average: formatINR(history.averageCents),
+      min: formatINR(history.minCents),
+      max: formatINR(history.maxCents),
       dataPointCount: history.dataPoints.length,
     };
   },
@@ -190,10 +191,10 @@ export const checkPolicyTool = {
       reasons: result.reasons,
       trace: result.trace,
       riskScore: result.riskScore,
-      remainingBudgetAfter: formatUSD(result.remainingBudgetAfter),
+      remainingBudgetAfter: formatINR(result.remainingBudgetAfter),
       product: product.title,
       merchant: offer.merchantName,
-      price: formatUSD(offer.priceCents),
+      price: formatINR(offer.priceCents),
     };
   },
 };
@@ -251,17 +252,17 @@ export const getBudgetStatusTool = {
 
     return {
       type: "budget_status" as const,
-      monthlyBudget: formatUSD(policy.monthlyBudget),
-      captured: formatUSD(ledger.captured_cents),
-      reserved: formatUSD(ledger.reserved_cents),
-      remaining: formatUSD(remaining),
+      monthlyBudget: formatINR(policy.monthlyBudget),
+      captured: formatINR(ledger.captured_cents),
+      reserved: formatINR(ledger.reserved_cents),
+      remaining: formatINR(remaining),
       remainingPct: Math.round((remaining / policy.monthlyBudget) * 100),
-      perPurchaseCap: formatUSD(policy.perPurchaseCap),
-      approvalThreshold: formatUSD(policy.requireApprovalOver),
+      perPurchaseCap: formatINR(policy.perPurchaseCap),
+      approvalThreshold: formatINR(policy.requireApprovalOver),
       frozen: policy.frozen,
       recentPurchases: recent.slice(0, 5).map(p => ({
         title: p.title,
-        amount: formatUSD(p.amount_cents),
+        amount: formatINR(p.amount_cents),
         status: p.status,
         merchant: p.offer_domain,
         date: p.created_at,

@@ -53,31 +53,45 @@ async function processAgentMessage(message: string, _history: any[]) {
   let reply = "";
 
   // Deterministic command interpretation (works without LLM API key)
-  if (msg.includes("search") || msg.includes("find") || msg.includes("looking for")) {
+  // Check for search intent first (before buy intent)
+  if (
+    msg.includes("search") || 
+    msg.includes("find") || 
+    msg.includes("looking for") || 
+    msg.includes("show me") ||
+    (msg.includes("want") && !msg.match(/prod-[\w-]+/)) || // "want" without product ID = search
+    (msg.includes("buy") && !msg.match(/prod-[\w-]+/)) ||  // "buy" without product ID = search
+    (msg.includes("need") && !msg.match(/prod-[\w-]+/))    // "need" without product ID = search
+  ) {
     // Extract search query - be more careful with extraction
     let query = message;
     
-    // Remove common command prefixes
-    query = query.replace(/^(can you |could you |please |)?(search for|find|find me|looking for|show me|i want|i need|get me)\s+/i, "");
+    // Remove common command prefixes more aggressively
+    query = query.replace(/^(can you |could you |please |would you |i want to |i need to |i'd like to |help me |i wanna |let me )/i, "");
+    query = query.replace(/^(search for|search|find me|find|looking for|show me|show|i want|i need|get me|buy me|buy|get|purchase)\s+/i, "");
     
-    // Extract price if mentioned
-    const maxPriceMatch = message.match(/under\s*(?:rs\.?|₹|\$)?\s*(\d+)/i);
+    // Extract price if mentioned (support USD, INR, RS, ₹)
+    const maxPriceMatch = message.match(/under\s*(?:rs\.?|₹|\$|rupees?|dollars?)?\s*(\d+)/i);
     let maxPrice = maxPriceMatch ? parseInt(maxPriceMatch[1]) : undefined;
     
-    // Convert INR to USD if needed (rough conversion: 1 USD = 83 INR)
-    if (message.match(/\brs\b|₹/i) && maxPrice) {
-      maxPrice = Math.round(maxPrice / 83); // Convert INR to USD
+    // Convert INR to USD if needed (1 USD ≈ 83 INR)
+    if (message.match(/\brs\b|₹|rupees?/i) && maxPrice) {
+      maxPrice = Math.round(maxPrice / 83); // Convert INR to USD for search
     }
     
     // Remove price from query
-    query = query.replace(/under\s*(?:rs\.?|₹|\$)?\s*\d+/i, "").trim();
+    query = query.replace(/under\s*(?:rs\.?|₹|\$|rupees?|dollars?)?\s*\d+/i, "").trim();
+    
+    // Remove "to " prefix that might remain
+    query = query.replace(/^(to|a|an|some)\s+/i, "");
     
     // Clean up extra spaces
     query = query.replace(/\s+/g, " ").trim();
     
-    // If query is too short or empty, use original message
+    // If query is too short or empty, extract product type
     if (!query || query.length < 2) {
-      query = message.replace(/^(search for|find|find me|looking for|show me)\s*/i, "").trim();
+      const productMatch = message.match(/\b(monitor|laptop|headphone|keyboard|mouse|webcam|cable|speaker|phone|tablet|watch|tv|television)\w*/i);
+      query = productMatch ? productMatch[0] : message.replace(/^(search for|search|find|find me|looking for|show me|show|buy|get|purchase)\s*/i, "").trim();
     }
 
     const result = await searchProductsTool.execute({ query, maxPrice });
@@ -87,17 +101,9 @@ async function processAgentMessage(message: string, _history: any[]) {
       if (result.products.length === 0) {
         reply = `I couldn't find any products matching "${query}". Try a different search term or be more specific (e.g., "headphones", "monitor", "laptop").`;
       } else {
-        reply = `I found ${result.products.length} product(s) matching "${query}":\n\n`;
-        for (const p of result.products) {
-          reply += `**${p.title}** (ID: ${p.id})\n`;
-          reply += `  Best price: ${p.bestPrice} • ${p.offerCount} offers • ${p.inStock ? "In Stock ✓" : "Out of Stock ✗"}\n`;
-          reply += `  Offers:\n`;
-          for (const o of p.offers.slice(0, 3)) {
-            reply += `    • ${o.merchant}: ${o.price} ${o.inStock ? "✓" : "✗"} (ID: ${o.id})\n`;
-          }
-          reply += "\n";
-        }
-        reply += "\nWould you like me to check the policy for any of these, or compare offers?";
+        const offerCount = result.products.reduce((n: number, p: any) => n + (p.offers?.length ?? 0), 0);
+        reply = `I found **${result.products.length} product${result.products.length === 1 ? "" : "s"}** matching "${query}" across ${offerCount} offers.`;
+        reply += "\n\nFilter by price, merchant or availability below, then check the policy or compare offers.";
       }
     } else {
       reply = "Error searching for products.";
@@ -109,12 +115,9 @@ async function processAgentMessage(message: string, _history: any[]) {
       toolResults.push({ tool: "compare_offers", result });
       
       if (result.type === "offer_comparison") {
-        reply = `**Offer Comparison for ${result.productTitle}:**\n\n`;
-        for (const o of result.offers) {
-          reply += `${o.isBestDeal ? "🏆 " : "  "}${o.merchant}: ${o.price} ${o.inStock ? "✓ In Stock" : "✗ Out of Stock"} (ID: ${o.id})\n`;
-        }
+        reply = `Here are all offers for **${result.productTitle}**.`;
         if (result.bestDeal) {
-          reply += `\n**Best Deal:** ${result.bestDeal.merchant} at ${result.bestDeal.price}`;
+          reply += ` The best deal is **${result.bestDeal.merchant} at ${result.bestDeal.price}**.`;
         }
       } else if (result.type === "error") {
         reply = `Error: ${result.message}`;
@@ -130,12 +133,8 @@ async function processAgentMessage(message: string, _history: any[]) {
       toolResults.push({ tool: "check_policy", result });
       
       if (result.type === "policy_check") {
-        const emoji = result.decision === "ALLOW" ? "✅" : result.decision === "REQUIRE_APPROVAL" ? "⚠️" : "❌";
-        reply = `**Policy Check ${emoji} ${result.decision}**\n\n`;
-        reply += `Product: ${result.product}\nMerchant: ${result.merchant}\nPrice: ${result.price}\n\n`;
-        reply += `**Reasons:** ${result.reasons.join("; ")}\n`;
-        reply += `**Remaining Budget After:** ${result.remainingBudgetAfter}\n`;
-        reply += `**Risk Score:** ${result.riskScore}/100\n`;
+        reply = `**Policy: ${result.decision}** — ${result.reasons.join("; ")}`;
+        reply += `\n\nYou'd have **${result.remainingBudgetAfter}** left this month afterwards.`;
       } else if (result.type === "error") {
         reply = `Error: ${result.message}`;
       }
@@ -150,26 +149,15 @@ async function processAgentMessage(message: string, _history: any[]) {
       toolResults.push({ tool: "request_purchase", result });
       
       if (result.type === "purchase_denied") {
-        reply = `❌ **Purchase DENIED**\n\n`;
+        reply = `**Purchase blocked.**`;
         if (result.reasons) {
-          reply += `**Reasons:** ${result.reasons.join("; ")}\n\n`;
+          reply += `\n\n${result.reasons.join("; ")}.`;
         }
-        reply += `I'd suggest looking for a more affordable alternative or from an allowed merchant.`;
+        reply += `\n\nTry a more affordable alternative or an approved merchant.`;
       } else if (result.type === "purchase_requested") {
-        reply = `${result.decision === "ALLOW" ? "✅" : "⚠️"} **Purchase ${result.decision}**\n\n`;
-        if (result.purchaseRequestId) {
-          reply += `**Purchase ID:** ${result.purchaseRequestId}\n`;
-        }
-        if (result.approvalUrl) {
-          reply += `**Approval URL:** ${result.approvalUrl}\n`;
-        }
-        if (result.guardianApprovalUrl) {
-          reply += `**Guardian Approval:** ${result.guardianApprovalUrl}\n`;
-        }
-        if (result.reasons) {
-          reply += `**Reasons:** ${result.reasons.join("; ")}\n`;
-        }
-        reply += `**Risk Score:** ${result.riskScore}/100\n`;
+        reply = result.decision === "ALLOW"
+          ? `**Purchase allowed.** Open the payment link below to finish checkout.`
+          : `**Needs approval.** This is over your auto-approve threshold — a guardian needs to sign off below.`;
       }
     } else {
       reply = "Please specify a product ID and offer ID to purchase. Example: `buy prod-mon-001 off-001a`\nUse `search` first to find products.";
@@ -179,19 +167,9 @@ async function processAgentMessage(message: string, _history: any[]) {
     toolResults.push({ tool: "get_budget_status", result });
     
     if (result.type === "budget_status") {
-      reply = `**Budget Status:**\n\n`;
-      reply += `Monthly Budget: ${result.monthlyBudget}\n`;
-      reply += `Spent (Captured): ${result.captured}\n`;
-      reply += `Reserved: ${result.reserved}\n`;
-      reply += `Remaining: ${result.remaining} (${result.remainingPct}%)\n`;
-      reply += `Per-Purchase Cap: ${result.perPurchaseCap}\n`;
-      reply += `Approval Threshold: ${result.approvalThreshold}\n`;
-      reply += `Frozen: ${result.frozen ? "Yes 🔒" : "No"}\n`;
-      if (result.recentPurchases.length > 0) {
-        reply += `\n**Recent Purchases:**\n`;
-        for (const p of result.recentPurchases) {
-          reply += `• ${p.title} — ${p.amount} (${p.status}) from ${p.merchant}\n`;
-        }
+      reply = `You have **${result.remaining}** left this month (${result.remainingPct}% of ${result.monthlyBudget}).`;
+      if (result.frozen) {
+        reply += `\n\nYour wallet is frozen, so purchases are blocked until you unfreeze it in Policy.`;
       }
     }
   } else if (msg.includes("price history") || msg.includes("price trend")) {
@@ -201,7 +179,7 @@ async function processAgentMessage(message: string, _history: any[]) {
       toolResults.push({ tool: "get_price_history", result });
       
       if (result.type === "price_history") {
-        reply = `**Price History:**\n\nAverage: ${result.average}\nMin: ${result.min}\nMax: ${result.max}\nData Points: ${result.dataPointCount}\n`;
+        reply = `Over the last **${result.dataPointCount}** price points this item averaged **${result.average}**, ranging ${result.min}–${result.max}.`;
       } else if (result.type === "error") {
         reply = `Error: ${result.message}`;
       }
@@ -209,13 +187,12 @@ async function processAgentMessage(message: string, _history: any[]) {
       reply = "Please specify a product ID to get price history. Example: `price history for prod-mon-001`";
     }
   } else {
-    reply = `I'm your shopping assistant! Here's what I can do:\n\n`;
-    reply += `• **Search products:** "Find me a 27-inch 4K monitor under $350"\n`;
-    reply += `• **Compare offers:** "Compare offers for prod-mon-001"\n`;
-    reply += `• **Check policy:** "Check policy for prod-mon-001 off-001a"\n`;
-    reply += `• **Buy:** "Buy prod-mon-001 off-001a"\n`;
-    reply += `• **Budget status:** "Show my budget"\n`;
-    reply += `• **Price history:** "Price history for prod-mon-001"\n`;
+    reply = `I'm your shopping assistant! Try these:\n\n`;
+    reply += `• "Find headphones"\n`;
+    reply += `• "I want to buy a monitor under 25000 rs"\n`;
+    reply += `• "Search laptops under 50000"\n`;
+    reply += `• "Show keyboards"\n`;
+    reply += `• "Show my budget"\n`;
     reply += `\nWhat would you like to search for?`;
   }
 

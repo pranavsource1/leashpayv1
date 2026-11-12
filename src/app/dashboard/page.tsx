@@ -1,13 +1,23 @@
 "use client";
+
 import { useState, useEffect } from "react";
+import Icon, { type IconName } from "@/components/icons";
 
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [purchases, setPurchases] = useState<any[]>([]);
+  const [filterStatus, setFilterStatus] = useState<string>("All");
+  const [filterMerchant, setFilterMerchant] = useState<string>("All");
+  const [filterCategory, setFilterCategory] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
-    fetch("/api/dashboard").then(r => r.json()).then(setData);
-    fetch("/api/purchases").then(r => r.json()).then(d => setPurchases(d.purchases || []));
+    fetch("/api/dashboard")
+      .then((r) => r.json())
+      .then(setData);
+    fetch("/api/purchases")
+      .then((r) => r.json())
+      .then((d) => setPurchases(d.purchases || []));
   }, []);
 
   async function refund(id: string) {
@@ -26,151 +36,436 @@ export default function DashboardPage() {
     }
   }
 
-  if (!data) return <p>Loading dashboard...</p>;
+  const merchants = Array.from(
+    new Set(purchases.map((p) => p.offer_domain).filter(Boolean))
+  ).sort() as string[];
+  const categories = Array.from(
+    new Set(purchases.map((p) => p.category).filter(Boolean))
+  ).sort() as string[];
+
+  const filteredPurchases = purchases.filter((p) => {
+    const q = searchQuery.trim().toLowerCase();
+    const matchesStatus = filterStatus === "All" || p.status === filterStatus;
+    const matchesMerchant = filterMerchant === "All" || p.offer_domain === filterMerchant;
+    const matchesCategory = filterCategory === "All" || p.category === filterCategory;
+    const matchesSearch =
+      !q ||
+      (p.title ?? "").toLowerCase().includes(q) ||
+      (p.offer_domain ?? "").toLowerCase().includes(q);
+    return matchesStatus && matchesMerchant && matchesCategory && matchesSearch;
+  });
+
+  const filtersActive =
+    filterStatus !== "All" || filterMerchant !== "All" || filterCategory !== "All" || !!searchQuery;
+
+  function clearFilters() {
+    setFilterStatus("All");
+    setFilterMerchant("All");
+    setFilterCategory("All");
+    setSearchQuery("");
+  }
+
+  if (!data) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-primary" />
+        Loading dashboard…
+      </div>
+    );
+  }
 
   const b = data.budget;
-  const budgetPct = b.remainingPct;
-  const barColor = budgetPct > 50 ? "#28a745" : budgetPct > 20 ? "#ffc107" : "#dc3545";
+  const budgetPct = Math.max(0, Math.min(100, b.remainingPct));
+  const budgetTone = budgetPct > 50 ? "bg-primary" : budgetPct > 20 ? "bg-amber-400" : "bg-red-500";
+
+  const selectClass =
+    "h-9 rounded-lg border border-line bg-surface px-2.5 text-xs font-medium text-muted-600 outline-none transition hover:border-line-strong focus:border-primary focus:ring-2 focus:ring-primary/20";
 
   return (
-    <div>
-      <h1>📊 Spend Dashboard</h1>
-
-      {/* Budget Meter */}
-      <div style={{ background: "white", padding: "20px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "20px" }}>
-        <h3 style={{ marginTop: 0 }}>💰 Monthly Budget {b.frozen && "🔒 FROZEN"}</h3>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-          <span>Remaining: <strong>{b.remainingFormatted}</strong> ({budgetPct}%)</span>
-          <span>Total: {b.totalFormatted}</span>
+    <div className="pb-4">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <p className="mt-1 text-sm text-muted">
+            Spending, policy decisions and purchase history for the demo wallet.
+          </p>
         </div>
-        <div style={{ background: "#eee", borderRadius: "8px", height: "24px", overflow: "hidden" }}>
-          <div style={{
-            background: barColor, height: "100%", borderRadius: "8px",
-            width: `${Math.max(0, Math.min(100, budgetPct))}%`,
-            transition: "width 0.5s"
-          }} />
-        </div>
-        <div style={{ display: "flex", gap: "24px", marginTop: "12px", fontSize: "14px" }}>
-          <span>Captured: <strong>{b.capturedFormatted}</strong></span>
-          <span>Reserved: <strong>{b.reservedFormatted}</strong></span>
-        </div>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
+            b.frozen
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-cta-border bg-cta-soft text-emerald-700"
+          }`}
+        >
+          <Icon name={b.frozen ? "lock" : "shieldCheck"} className="h-3.5 w-3.5" />
+          {b.frozen ? "Wallet frozen" : "Wallet active"}
+        </span>
       </div>
 
-      {/* Stats Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "16px", marginBottom: "20px" }}>
-        <StatCard title="Blocked Spending" value={data.savings.blockedTotalFormatted} subtitle={`${data.savings.blockedCount} attempts blocked`} color="#dc3545" />
-        <StatCard title="Savings from Best Deals" value={data.savings.savingsTotalFormatted} subtitle={`${data.savings.savingsCount} times`} color="#28a745" />
-        <StatCard title="Total Captured" value={b.capturedFormatted} subtitle="This month" color="#003087" />
-        <StatCard title="Pending" value={b.reservedFormatted} subtitle="Awaiting approval" color="#ff9800" />
-      </div>
-
-      {/* Spend by Merchant & Category */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
-        <div style={{ background: "white", padding: "16px", borderRadius: "8px", border: "1px solid #ddd" }}>
-          <h3 style={{ marginTop: 0 }}>🏪 By Merchant</h3>
-          {data.spend.byMerchant.length === 0 ? (
-            <p style={{ color: "#999" }}>No purchases yet</p>
-          ) : data.spend.byMerchant.map((m: any, i: number) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #eee" }}>
-              <span>{m.merchant}</span>
-              <span><strong>{m.totalFormatted}</strong> ({m.count})</span>
-            </div>
-          ))}
+      {/* Budget */}
+      <section className="mb-4 rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Monthly budget
+            </p>
+            <p className="mt-2 font-display text-3xl font-bold tracking-tight text-foreground">
+              {b.remainingFormatted}
+            </p>
+            <p className="mt-1 text-sm text-muted">left of {b.totalFormatted}</p>
+          </div>
+          <span className="shrink-0 rounded-lg bg-primary-soft px-2.5 py-1.5 text-xs font-bold text-primary">
+            {budgetPct}% left
+          </span>
         </div>
-        <div style={{ background: "white", padding: "16px", borderRadius: "8px", border: "1px solid #ddd" }}>
-          <h3 style={{ marginTop: 0 }}>📁 By Category</h3>
-          {data.spend.byCategory.length === 0 ? (
-            <p style={{ color: "#999" }}>No purchases yet</p>
-          ) : data.spend.byCategory.map((c: any, i: number) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #eee" }}>
-              <span>{c.category}</span>
-              <span><strong>{c.totalFormatted}</strong> ({c.count})</span>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Decision Distribution */}
-      <div style={{ background: "white", padding: "16px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "20px" }}>
-        <h3 style={{ marginTop: 0 }}>📊 Decisions</h3>
-        <div style={{ display: "flex", gap: "24px" }}>
-          {data.spend.byDecision.map((d: any, i: number) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "28px", fontWeight: "bold", color: d.decision === "DENY" ? "#dc3545" : d.decision === "ALLOW" ? "#28a745" : "#ff9800" }}>
-                {d.count}
+        <div className="mt-5">
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full transition-[width] duration-500 ${budgetTone}`}
+              style={{ width: `${budgetPct}%` }}
+            />
+          </div>
+          <div className="mt-2 flex justify-between text-xs text-muted-400">
+            <span>Spent {b.capturedFormatted}</span>
+            <span>{Math.max(0, 100 - budgetPct)}% used</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Stat cards */}
+      <section className="mb-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatCard
+          label="Blocked spending"
+          value={data.savings.blockedTotalFormatted}
+          icon="shield"
+          tone="red"
+        />
+        <StatCard
+          label="Saved on best deals"
+          value={data.savings.savingsTotalFormatted}
+          icon="tag"
+          tone="emerald"
+        />
+        <StatCard label="Captured" value={b.capturedFormatted} icon="receipt" tone="indigo" />
+        <StatCard label="Pending" value={b.reservedFormatted} icon="clock" tone="amber" />
+      </section>
+
+      {/* Spend breakdown */}
+      <section className="mb-4 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+        <BreakdownCard
+          title="Spend by merchant"
+          icon="store"
+          rows={data.spend.byMerchant.map((m: any) => ({
+            label: m.merchant,
+            total: m.totalFormatted,
+            count: m.count,
+          }))}
+        />
+        <BreakdownCard
+          title="Spend by category"
+          icon="folder"
+          rows={data.spend.byCategory.map((c: any) => ({
+            label: c.category,
+            total: c.totalFormatted,
+            count: c.count,
+          }))}
+        />
+      </section>
+
+      {/* Decisions */}
+      <section className="mb-4 rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
+          <Icon name="shield" className="h-4 w-4 text-muted-400" />
+          Policy decisions
+        </h3>
+        {data.spend.byDecision.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-400">No decisions recorded yet</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {data.spend.byDecision.map((d: any, i: number) => (
+              <div
+                key={i}
+                className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${decisionTone(d.decision)}`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                <span className="text-xs font-semibold">
+                  {decisionLabel(d.decision)} · {d.count}
+                </span>
               </div>
-              <div style={{ fontSize: "13px", color: "#666" }}>{d.decision}</div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Purchase history */}
+      <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <Icon name="receipt" className="h-4 w-4 text-muted-400" />
+              Purchase history
+            </h3>
+            <p className="mt-1 text-xs text-muted">
+              Showing {filteredPurchases.length} of {purchases.length} purchases
+              {filtersActive && (
+                <button
+                  onClick={clearFilters}
+                  className="ml-2 font-semibold text-primary underline-offset-2 hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <div className="relative min-w-[170px] flex-1">
+              <Icon
+                name="search"
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-400"
+              />
+              <input
+                type="text"
+                placeholder="Search item or merchant"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 w-full rounded-lg border border-line bg-surface pl-8 pr-3 text-xs text-foreground outline-none transition placeholder:text-muted-400 hover:border-line-strong focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <select
+              aria-label="Filter by status"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className={selectClass}
+            >
+              <option value="All">All statuses</option>
+              <option value="PAID">Paid</option>
+              <option value="PENDING_APPROVAL">Pending approval</option>
+              <option value="DENIED">Denied</option>
+            </select>
+
+            <select
+              aria-label="Filter by merchant"
+              value={filterMerchant}
+              onChange={(e) => setFilterMerchant(e.target.value)}
+              className={selectClass}
+            >
+              <option value="All">All merchants</option>
+              {merchants.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+
+            <select
+              aria-label="Filter by category"
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className={selectClass}
+            >
+              <option value="All">All categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-line text-[10px] font-semibold uppercase tracking-wider text-muted-400">
+                <th className="py-2.5 pr-4 text-left font-semibold">Item</th>
+                <th className="py-2.5 pr-4 text-left font-semibold">Amount</th>
+                <th className="py-2.5 pr-4 text-left font-semibold">Merchant</th>
+                <th className="py-2.5 pr-4 text-left font-semibold">Status</th>
+                <th className="py-2.5 pr-4 text-left font-semibold">Decision</th>
+                <th className="py-2.5 text-right font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPurchases.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-sm text-muted-400">
+                    {purchases.length === 0
+                      ? "No purchases yet. Ask the agent to find something."
+                      : "No purchases match these filters."}
+                  </td>
+                </tr>
+              ) : (
+                filteredPurchases.map((p) => (
+                  <tr
+                    key={p.id}
+                    className="border-b border-line/70 transition-colors last:border-0 hover:bg-canvas"
+                  >
+                    <td className="py-3.5 pr-4">
+                      <p className="font-semibold text-foreground">{p.title}</p>
+                      {p.category && <p className="text-[11px] text-muted-400">{p.category}</p>}
+                    </td>
+                    <td className="py-3.5 pr-4 font-semibold tabular-nums text-foreground">
+                      {formatAmount(p.amount_cents, p.currency)}
+                    </td>
+                    <td className="py-3.5 pr-4 text-muted-600">{p.offer_domain ?? "—"}</td>
+                    <td className="py-3.5 pr-4">
+                      <span
+                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${statusTone(p.status)}`}
+                      >
+                        {statusLabel(p.status)}
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-4">
+                      <span
+                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${decisionTone(p.policy_decision)}`}
+                      >
+                        {decisionLabel(p.policy_decision)}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap py-3.5 text-right">
+                      {p.status === "PAID" && (
+                        <button
+                          className="mr-1 rounded-md px-2.5 py-1 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-50"
+                          onClick={() => refund(p.id)}
+                        >
+                          Refund
+                        </button>
+                      )}
+                      <a
+                        href={`/r/${p.id}`}
+                        target="_blank"
+                        rel="noopener"
+                        className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary-soft"
+                      >
+                        Receipt
+                        <Icon name="arrowRight" className="h-3 w-3" />
+                      </a>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+const STAT_TONES: Record<string, string> = {
+  red: "bg-red-50 text-red-600",
+  emerald: "bg-cta-soft text-emerald-600",
+  indigo: "bg-primary-soft text-primary",
+  amber: "bg-amber-50 text-amber-600",
+};
+
+function StatCard({
+  label,
+  value,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  icon: IconName;
+  tone: keyof typeof STAT_TONES;
+}) {
+  return (
+    <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm transition-shadow hover:shadow-lift sm:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted">{label}</p>
+          <p className="mt-1 font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            {value}
+          </p>
+        </div>
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${STAT_TONES[tone]}`}>
+          <Icon name={icon} className="h-4 w-4" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function BreakdownCard({
+  title,
+  icon,
+  rows,
+}: {
+  title: string;
+  icon: IconName;
+  rows: { label: string; total: string; count: number }[];
+}) {
+  return (
+    <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+      <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
+        <Icon name={icon} className="h-4 w-4 text-muted-400" />
+        {title}
+      </h3>
+      {rows.length === 0 ? (
+        <p className="py-10 text-center text-sm text-muted-400">No purchases yet</p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between gap-3 rounded-lg bg-canvas px-3 py-2"
+            >
+              <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                {row.label}
+              </span>
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-muted-600">
+                {row.total}
+                <span className="ml-1 text-xs font-normal text-muted-400">({row.count})</span>
+              </span>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Purchase History */}
-      <div style={{ background: "white", padding: "16px", borderRadius: "8px", border: "1px solid #ddd" }}>
-        <h3 style={{ marginTop: 0 }}>🛒 Purchase History</h3>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5", textAlign: "left" }}>
-              <th style={{ padding: "8px" }}>Item</th>
-              <th style={{ padding: "8px" }}>Amount</th>
-              <th style={{ padding: "8px" }}>Merchant</th>
-              <th style={{ padding: "8px" }}>Status</th>
-              <th style={{ padding: "8px" }}>Decision</th>
-              <th style={{ padding: "8px" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {purchases.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: "20px", textAlign: "center", color: "#999" }}>No purchases yet</td></tr>
-            ) : purchases.map(p => (
-              <tr key={p.id} style={{ borderBottom: "1px solid #eee" }}>
-                <td style={{ padding: "8px" }}>{p.title}</td>
-                <td style={{ padding: "8px" }}>${(p.amount_cents / 100).toFixed(2)}</td>
-                <td style={{ padding: "8px" }}>{p.offer_domain}</td>
-                <td style={{ padding: "8px" }}>
-                  <StatusBadge status={p.status} />
-                </td>
-                <td style={{ padding: "8px" }}>
-                  <DecisionBadge decision={p.policy_decision} />
-                </td>
-                <td style={{ padding: "8px" }}>
-                  {p.status === "PAID" && (
-                    <button onClick={() => refund(p.id)} style={{ padding: "4px 12px", borderRadius: "4px", background: "#dc3545", color: "white", border: "none", cursor: "pointer", fontSize: "12px" }}>
-                      Refund
-                    </button>
-                  )}
-                  <a href={`/r/${p.id}`} style={{ marginLeft: "8px", fontSize: "12px" }}>Receipt</a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      )}
     </div>
   );
 }
 
-function StatCard({ title, value, subtitle, color }: { title: string; value: string; subtitle: string; color: string }) {
-  return (
-    <div style={{ background: "white", padding: "16px", borderRadius: "8px", border: "1px solid #ddd", borderLeft: `4px solid ${color}` }}>
-      <div style={{ fontSize: "12px", color: "#666", marginBottom: "4px" }}>{title}</div>
-      <div style={{ fontSize: "24px", fontWeight: "bold", color }}>{value}</div>
-      <div style={{ fontSize: "12px", color: "#999" }}>{subtitle}</div>
-    </div>
-  );
+function formatAmount(cents: number, currency: string) {
+  const value = (cents ?? 0) / 100;
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency || "USD",
+    }).format(value);
+  } catch {
+    return `$${value.toFixed(2)}`;
+  }
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    PAID: "#28a745", PENDING_APPROVAL: "#ff9800", DENIED: "#dc3545",
-    CANCELLED: "#6c757d", EXPIRED: "#6c757d", REFUNDED: "#17a2b8", FAILED: "#dc3545"
-  };
-  return <span style={{ background: colors[status] || "#999", color: "white", padding: "2px 8px", borderRadius: "10px", fontSize: "11px" }}>{status}</span>;
+function statusLabel(status: string) {
+  if (status === "PAID") return "Paid";
+  if (status === "PENDING_APPROVAL") return "Pending approval";
+  if (status === "DENIED") return "Denied";
+  if (status === "EXPIRED") return "Expired";
+  return status ?? "—";
 }
 
-function DecisionBadge({ decision }: { decision: string }) {
-  const colors: Record<string, string> = {
-    ALLOW: "#28a745", REQUIRE_APPROVAL: "#ff9800", DENY: "#dc3545"
-  };
-  return <span style={{ background: colors[decision] || "#999", color: "white", padding: "2px 8px", borderRadius: "10px", fontSize: "11px" }}>{decision}</span>;
+function statusTone(status: string) {
+  if (status === "PAID") return "bg-cta-soft text-emerald-700";
+  if (status === "PENDING_APPROVAL") return "bg-amber-50 text-amber-700";
+  if (status === "DENIED") return "bg-red-50 text-red-700";
+  return "bg-slate-100 text-muted-600";
+}
+
+function decisionLabel(decision: string) {
+  if (decision === "ALLOW") return "Allowed";
+  if (decision === "REQUIRE_APPROVAL") return "Needs approval";
+  if (decision === "DENY") return "Denied";
+  return decision ?? "—";
+}
+
+function decisionTone(decision: string) {
+  if (decision === "ALLOW") return "bg-cta-soft text-emerald-700";
+  if (decision === "REQUIRE_APPROVAL") return "bg-amber-50 text-amber-700";
+  if (decision === "DENY") return "bg-red-50 text-red-700";
+  return "bg-slate-100 text-muted-600";
 }

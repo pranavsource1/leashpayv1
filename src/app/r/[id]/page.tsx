@@ -1,6 +1,8 @@
 "use client";
+
 import { useState, useEffect, Suspense } from "react";
 import { useParams } from "next/navigation";
+import Icon from "@/components/icons";
 
 function ReceiptContent() {
   const params = useParams();
@@ -11,92 +13,160 @@ function ReceiptContent() {
   useEffect(() => {
     if (id) {
       fetch(`/api/receipt?id=${id}`)
-        .then(r => r.json())
-        .then(d => { if (d.error) setError(d.error); else setData(d); })
-        .catch(e => setError(e.message));
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.error) setError(d.error);
+          else setData(d);
+        })
+        .catch((e) => setError(e.message));
     }
   }, [id]);
 
-  if (error) return <div style={{ padding: "40px", textAlign: "center" }}><h2>❌ {error}</h2></div>;
-  if (!data) return <p>Loading receipt...</p>;
+  if (error) {
+    return (
+      <div className="mx-auto mt-12 max-w-md rounded-2xl border border-red-200 bg-surface p-8 text-center shadow-sm">
+        <span className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-red-50 text-red-600">
+          <Icon name="alert" className="h-5 w-5" />
+        </span>
+        <h1 className="mt-4 text-lg font-bold text-foreground">{error}</h1>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center gap-2 pt-16 text-sm text-muted">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-primary" />
+        Loading receipt…
+      </div>
+    );
+  }
 
   const r = data.receipt;
   const m = data.mandate;
+  const statusClass =
+    r.status === "PAID"
+      ? "bg-cta-soft text-emerald-700 border-cta-border"
+      : r.status === "DENIED"
+        ? "bg-red-50 text-red-700 border-red-200"
+        : "bg-amber-50 text-amber-700 border-amber-200";
 
   return (
-    <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-      <h1>🧾 Purchase Receipt</h1>
-
-      <div style={{ background: "white", padding: "24px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ margin: 0 }}>{r.title}</h2>
-          <span style={{
-            background: r.status === "PAID" ? "#28a745" : r.status === "DENIED" ? "#dc3545" : "#ff9800",
-            color: "white", padding: "4px 12px", borderRadius: "12px", fontSize: "13px", fontWeight: "bold"
-          }}>{r.status}</span>
-        </div>
-
-        <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "14px" }}>
-          <div><strong>Amount:</strong> {r.amount}</div>
-          <div><strong>Currency:</strong> {r.currency}</div>
-          <div><strong>Merchant:</strong> {r.merchant}</div>
-          <div><strong>Category:</strong> {r.category}</div>
-          <div><strong>Decision:</strong> {r.decision}</div>
-          <div><strong>Risk Score:</strong> {r.riskScore}/100</div>
-          <div><strong>PayPal Order:</strong> <code style={{ fontSize: "12px" }}>{r.paypalOrderId || "N/A"}</code></div>
-          <div><strong>PayPal Capture:</strong> <code style={{ fontSize: "12px" }}>{r.paypalCaptureId || "N/A"}</code></div>
-          <div><strong>Created:</strong> {new Date(r.createdAt).toLocaleString()}</div>
-          <div><strong>Cart Hash:</strong> <code style={{ fontSize: "11px" }}>{r.cartHash?.substring(0, 24)}…</code></div>
-        </div>
+    <div className="mx-auto max-w-2xl pb-4">
+      <div className="mb-5 flex items-center gap-2">
+        <Icon name="receipt" className="h-5 w-5 text-primary" />
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Purchase receipt</h1>
       </div>
 
-      {/* Mandate */}
+      <section className="mb-4 rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-base font-semibold text-foreground">{r.title}</h2>
+          <span
+            className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${statusClass}`}
+          >
+            {r.status}
+          </span>
+        </div>
+
+        <dl className="mt-4 grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
+          <Field label="Amount" value={r.amount} />
+          <Field label="Currency" value={r.currency} />
+          <Field label="Merchant" value={r.merchant} />
+          <Field label="Category" value={r.category} />
+          <Field label="Decision" value={r.decision} />
+          <Field label="Risk score" value={`${r.riskScore}/100`} />
+          <Field label="PayPal order" value={r.paypalOrderId || "N/A"} mono />
+          <Field label="PayPal capture" value={r.paypalCaptureId || "N/A"} mono />
+          <Field label="Created" value={new Date(r.createdAt).toLocaleString()} />
+          <Field label="Cart hash" value={`${r.cartHash?.substring(0, 24) ?? ""}…`} mono />
+        </dl>
+      </section>
+
       {m && (
-        <div style={{ background: "white", padding: "20px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "20px" }}>
-          <h3 style={{ marginTop: 0 }}>🔏 Cart Mandate</h3>
-          <div style={{ fontSize: "13px" }}>
-            <div><strong>Mandate ID:</strong> {m.id}</div>
-            <div><strong>Kind:</strong> {m.kind}</div>
-            <div><strong>Body Hash:</strong> <code>{m.bodyHash}</code></div>
-            <div><strong>Policy Version:</strong> {m.policyVersion}</div>
-            <div><strong>Signature:</strong> <code style={{ fontSize: "11px" }}>{m.signature}</code></div>
-            <div><strong>Signed At:</strong> {new Date(m.createdAt).toLocaleString()}</div>
-          </div>
-        </div>
+        <section className="mb-4 rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Icon name="lock" className="h-4 w-4 text-muted-400" />
+            Cart mandate
+          </h3>
+          <dl className="space-y-2 text-xs">
+            <Field label="Mandate ID" value={m.id} mono />
+            <Field label="Kind" value={m.kind} />
+            <Field label="Body hash" value={m.bodyHash} mono />
+            <Field label="Policy version" value={String(m.policyVersion)} />
+            <Field label="Signature" value={m.signature} mono />
+            <Field label="Signed at" value={new Date(m.createdAt).toLocaleString()} />
+          </dl>
+        </section>
       )}
 
-      {/* Policy Trace */}
       {r.policyTrace?.length > 0 && (
-        <div style={{ background: "white", padding: "20px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "20px" }}>
-          <h3 style={{ marginTop: 0 }}>🔍 Decision Trace</h3>
-          {r.policyTrace.map((t: any, i: number) => (
-            <div key={i} style={{ padding: "4px 0", fontSize: "13px", color: t.passed ? "#28a745" : "#dc3545" }}>
-              {t.passed ? "✓" : "✗"} <strong>{t.rule}</strong>: {t.detail}
-            </div>
-          ))}
-        </div>
+        <section className="mb-4 rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Icon name="shield" className="h-4 w-4 text-muted-400" />
+            Decision trace
+          </h3>
+          <ul className="space-y-1.5 text-xs">
+            {r.policyTrace.map((t: any, i: number) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <Icon
+                  name={t.passed ? "check" : "close"}
+                  strokeWidth={2.4}
+                  className={`mt-0.5 h-3 w-3 shrink-0 ${t.passed ? "text-cta" : "text-red-500"}`}
+                />
+                <span className={t.passed ? "text-muted-600" : "text-red-600"}>
+                  <span className="font-semibold">{t.rule}</span>: {t.detail}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      {/* Audit Trail */}
-      <div style={{ background: "white", padding: "20px", borderRadius: "8px", border: "1px solid #ddd" }}>
-        <h3 style={{ marginTop: 0 }}>📋 Audit Trail</h3>
-        {data.auditTrail?.map((a: any, i: number) => (
-          <div key={i} style={{ padding: "6px 0", borderBottom: "1px solid #eee", fontSize: "13px" }}>
-            <span style={{ color: "#999", marginRight: "8px" }}>{new Date(a.ts).toLocaleTimeString()}</span>
-            <span style={{ fontWeight: "bold", marginRight: "8px" }}>[{a.actor}]</span>
-            <span style={{ marginRight: "8px" }}>{a.event}</span>
-            <span style={{ color: "#666" }}>{a.summary}</span>
-          </div>
-        ))}
-      </div>
+      <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Icon name="list" className="h-4 w-4 text-muted-400" />
+          Audit trail
+        </h3>
+        <ul className="divide-y divide-line text-xs">
+          {data.auditTrail?.map((a: any, i: number) => (
+            <li key={i} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 py-2">
+              <span className="tabular-nums text-muted-400">
+                {new Date(a.ts).toLocaleTimeString()}
+              </span>
+              <span className="rounded bg-canvas px-1.5 py-0.5 text-[10px] font-semibold text-muted-600">
+                {a.actor}
+              </span>
+              <span className="font-medium text-foreground">{a.event}</span>
+              <span className="text-muted">{a.summary}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
 
+function Field({ label, value, mono }: { label: string; value?: string; mono?: boolean }) {
+  return (
+    <div>
+      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-400">{label}</dt>
+      <dd className={`mt-0.5 break-all text-foreground ${mono ? "font-mono text-[11px]" : "text-sm"}`}>
+        {value ?? "—"}
+      </dd>
+    </div>
+  );
+}
 
 export default function ReceiptPage() {
   return (
-    <Suspense fallback={<p style={{ textAlign: "center", marginTop: "60px" }}>Loading receipt...</p>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center gap-2 pt-16 text-sm text-muted">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-primary" />
+          Loading receipt…
+        </div>
+      }
+    >
       <ReceiptContent />
     </Suspense>
   );
